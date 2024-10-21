@@ -1,0 +1,1 @@
+# sct-resort-genai-bedrock
