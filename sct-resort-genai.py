@@ -2,9 +2,15 @@ import streamlit as st
 import boto3
 import json
 from PIL import Image
+from botocore.client import Config
 
 # Amazon Bedrock 클라이언트 설정
 bedrock_runtime = boto3.client('bedrock-runtime')
+bedrock_config = Config(connect_timeout=120, read_timeout=120, retries={'max_attempts': 0})
+bedrock_agent_client = boto3.client("bedrock-agent-runtime", config=bedrock_config)
+
+# Knowledge Base ID 설정
+kb_id = "ACSN5MRWK2"  ### <---- 자신의 KB ID로 반드시 변경 필요!!!!!!!!!!!!!!!!!!!!
 
 def call_bedrock_model(prompt, model_id):
     response = bedrock_runtime.converse(
@@ -70,15 +76,85 @@ def classify_input(input_text, model_id):
     개선요청
     """
     return call_bedrock_model(prompt, model_id)
+    
 
-def feedback_input(input_text, model_id):
-    prompt = f"""입력된 텍스트 (VOC 문의)에 대한 답변을 생성 합니다. 참조할 수 있는 답변 스타일 예시는 다음과 같습니다.
-<example_feedback_style>
-"안녕하세요? 에버랜드입니다. 접수주신 내용은 해당 회사가 임직원들게 제공되는 복리후생 제도로 개인과 가족간의 좋은 의도로 사용을 하셔야하는데...안타까운 마음입니다. 일부 몇명 때문에 다른분들에게 피해가 가면 안되는 사항이라 좀더 인사부서를 통해 재판매 단속을 강화하고, 임직원에게도 강력하게 동일 사항이 발생하지 않도록 전달하겠습니다. 좋은 제안 주셔서 감사드립니다."
-</example_feedback_style>
+def retrieve(query, kbId, numberOfResults=10):
+    return bedrock_agent_client.retrieve(
+        retrievalQuery= {
+            'text': query
+        },
+        knowledgeBaseId=kbId,
+        retrievalConfiguration= {
+            'vectorSearchConfiguration': {
+                'numberOfResults': numberOfResults,
+                'overrideSearchType': "HYBRID",
+            }
+        }
+    )
 
-텍스트: <text>{input_text}</text>"""
+def get_contexts(retrievalResults):
+    contexts = []
+    for retrievedResult in retrievalResults: 
+        contexts.append(retrievedResult['content']['text'])
+    return contexts
+
+def get_department(input_text, model_id):
+    response = retrieve(input_text, kb_id, 10)
+    retrievalResults = response['retrievalResults']
+    contexts = get_contexts(retrievalResults)
+
+    prompt = f"""
+    Human: 당신은 리조트 회사의 고객 서비스를 전문으로 하는 AI 어시스턴트입니다. 새로운 VOC(Voice of Customer)와 유사한 항목을 찾고, 관련 정보와 담당 부서를 제공하는 것이 당신의 임무입니다.
+    다음의 맥락 정보를 사용하여 <question> 태그 안에 있는 질문에 답하세요. 맥락에는 이전 VOC 항목들의 "질문내용", "답변내용", "담당 부서" 등의 정보가 포함되어 있습니다.
+
+    <context>
+    {contexts}
+    </context>
+
+    <question>
+    {input_text}
+    </question>
+
+    다음 형식으로 응답해 주세요:
+    이러한 유형의 문의나 이슈를 처리하는 담당 부서 이름만 답변에 출력하세요.
+    추가 설명이나 주석 없이 분류 단어만 작성해주세요.
+    
+    예시 응답:
+    리조트 주토피아운영그룹 동물보전1
+
+    A:"""
+
     return call_bedrock_model(prompt, model_id)
+
+
+def gen_feedback(input_text, model_id):
+    response = retrieve(input_text, kb_id, 10)
+    retrievalResults = response['retrievalResults']
+    contexts = get_contexts(retrievalResults)
+
+    prompt = f"""
+    Human: 당신은 리조트 회사의 고객 서비스를 전문으로 하는 AI 어시스턴트입니다. 새로운 VOC(Voice of Customer)와 유사한 항목을 찾고, 관련 정보와 담당 부서를 제공하는 것이 당신의 임무입니다.
+    다음의 맥락 정보를 사용하여 <question> 태그 안에 있는 질문에 답하세요. 맥락에는 이전 VOC 항목들의 "질문내용", "답변내용", "담당 부서" 등의 정보가 포함되어 있습니다.
+
+    <context>
+    {contexts}
+    </context>
+
+    <question>
+    {input_text}
+    </question>
+
+    다음 형식으로 응답해 주세요:
+    이러한 유형의 문의나 이슈를 처리하는 답변내용을 참조하세요.
+    답변 내용 및 스타일을 참조하여 고객 질의에 대한 답변을 생성하세요. 생성된 답변만 출력하세요.
+    
+    예시 응답:
+    "안전환경그룹고객안전 *** 프로안녕하세요안전그룹 *** 프로 입니다사고자 모 통화병원 치료 흉터 남을 것 같다고 하며 여자아이라 걱정하심보호자 책임도 있다고 공감하시어 당사에서 도의적인 치료비 지원 예정 입니다문제 없도록 종결 하겠습니다감사 합니다"
+
+    A:"""
+
+    return call_bedrock_model(prompt, model_id)
+
 
 st.set_page_config(layout="wide")
 # 로고 이미지 로드
@@ -125,11 +201,12 @@ with main_container:
                 st.session_state.voc_input = """안녕하세요 6월 22일 촬영 날짜전에 잠시 규정에 대해서 알고싶어서 연락드렸습니다 개인 미러리스로 혼자 촬영하려하구요 개인 스냅 촬영을 하는 브이로그를 촬영하려 합니다 주변인물들은 전부 모자이크를 할것이구요 확정된 인원만 나오는걸로 하여 영상 제작을 하려합니다 에버랜드에 정확한 규정이 어디있는지 몰라 연락드렸습니다 영상은 추후에 유튜브에 업로드 될 예정이오나 아직 채널도 없고 영상 시작을 에버랜드에서 하고자 연락드린겁니다 감사합니다스튜디오 " 도달 " 입니다감사합니다 좋은 하루 보내세요
                 """
         
+        # 조건부로 초기값 설정
+        if "voc_input" not in st.session_state:
+            st.session_state.voc_input = ""
+        
         # VOC 입력 텍스트 영역
-        voc_input = st.text_area("여기에 VOC를 입력해주세요.", 
-                                 value=st.session_state.get("voc_input", ""), 
-                                 height=200, 
-                                 key="voc_input")
+        voc_input = st.text_area("여기에 VOC를 입력해주세요.", height=200, key="voc_input")
         
         # 체크박스와 생성 버튼
         col_check, col_generate = st.columns([3, 1])
@@ -137,19 +214,22 @@ with main_container:
             summary = st.checkbox("요약", key="summary")
             classification = st.checkbox("분류", key="classification")
             feedback = st.checkbox("답변", key="feedback")
+            department = st.checkbox("담당 부서", key="department")
         with col_generate:
             generate = st.button("생성형 AI 생성", type="primary")
 
     with col2:
         st.subheader(f"Amazon Bedrock - {model_option} 답변 결과입니다.")
         
-        if generate and voc_input and (summary or classification or feedback):
+        if generate and voc_input and (summary or classification or feedback or department):
             if summary:
                 st.text_area("요약", summarize_input(voc_input, model_id), height=100)
             if classification:
                 st.text_area("분류 (일반/제안/개선/칭찬/기타)", classify_input(voc_input, model_id), height=100)
             if feedback:
-                st.text_area("답변", feedback_input(voc_input, model_id), height=200)
+                st.text_area("답변", gen_feedback(voc_input, model_id), height=200)
+            if department:
+                st.text_area("담당 부서", get_department(voc_input, model_id), height=100)
         elif generate:
             st.warning("텍스트를 입력하고 최소 하나의 옵션을 선택해주세요.")
 
