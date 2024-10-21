@@ -10,7 +10,7 @@ bedrock_config = Config(connect_timeout=120, read_timeout=120, retries={'max_att
 bedrock_agent_client = boto3.client("bedrock-agent-runtime", config=bedrock_config)
 
 # Knowledge Base ID 설정
-kb_id = "ACSN5MRWK2"  ### <---- 자신의 KB ID로 반드시 변경 필요!!!!!!!!!!!!!!!!!!!!
+kb_id = "ACSN5MRWK2"
 
 def call_bedrock_model(prompt, model_id):
     response = bedrock_runtime.converse(
@@ -233,14 +233,26 @@ with main_container:
         elif generate:
             st.warning("텍스트를 입력하고 최소 하나의 옵션을 선택해주세요.")
 
-# 4월 요약 보고서 버튼 및 내용 표시
+
+# VOC 요약 보고서 선택 및 표시
 st.markdown("---")  # 구분선 추가
-if st.button("2024년 4월 VOC 요약 보고서"):
+
+# 보고서 옵션 리스트
+report_options = {
+    "2024년 4월 VOC 요약 보고서": "./output/2024-04/2024-04_VOC_summary_report.md",
+    "2024년 5월 VOC 요약 보고서": "./output/2024-05/2024-05_VOC_summary_report.md"
+}
+
+# 드롭다운으로 보고서 선택
+selected_report = st.selectbox("보고서 선택", list(report_options.keys()))
+
+# 보고서 열람 버튼
+if st.button("보고서 열람"):
     try:
-        with open("./output/2024-04_detailed_summary_report.md", "r", encoding="utf-8") as file:
+        with open(report_options[selected_report], "r", encoding="utf-8") as file:
             report_content = file.read()
         st.markdown(report_content)
     except FileNotFoundError:
-        st.error("보고서 파일을 찾을 수 없습니다.")
+        st.error(f"선택한 보고서 파일을 찾을 수 없습니다: {selected_report}")
     except Exception as e:
         st.error(f"파일을 읽는 중 오류가 발생했습니다: {str(e)}")

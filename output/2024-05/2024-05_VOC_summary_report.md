@@ -1,6 +1,6 @@
-# 2024년 5월 VOC 일자별 요약 보고서
+# 2024-05 VOC 일자별 요약 보고서
 
-![일자별 VOC 접수 건수](daily_voc_count_line_chart.png)
+![일자별 VOC 접수 건수](2024-05_daily_voc_count_line_chart.png)
 
 ## 2024년 05월 01일
 
