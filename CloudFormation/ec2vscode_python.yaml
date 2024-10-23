@@ -1,0 +1,216 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: VsCode on EC2 with Amazon Linux 2023 & Python 3.9
+
+Parameters:
+  Region:
+    Description: "The AWS region where the resources will be deployed."
+    Type: String
+    Default: "us-west-2"
+
+  VpcCidrBlock:
+    Description: "The CIDR block for the VPC"
+    Type: String
+    Default: "172.30.0.0/16"
+
+  PublicSubnetCidrBlock:
+    Description: "The CIDR block for the public subnet"
+    Type: String
+    Default: "172.30.1.0/24"
+
+  InstanceType:
+    Description: "EC2 instance type for the server"
+    Type: String
+    Default: "t3.xlarge"
+
+  AMIType:
+    Description: "Select the Amazon Linux version for the EC2 instance"
+    Type: String
+    Default: "AmazonLinux2023"
+
+  AmazonLinux2023AmiId:
+    Type: "AWS::SSM::Parameter::Value<AWS::EC2::Image::Id>"
+    Default: "/aws/service/ami-amazon-linux-latest/al2023-ami-kernel-6.1-x86_64"
+
+Resources:
+  # VPC 생성
+  VsCodeVPC:
+    Type: 'AWS::EC2::VPC'
+    Properties:
+      CidrBlock: !Ref VpcCidrBlock
+      EnableDnsSupport: true
+      EnableDnsHostnames: true
+      Tags:
+        - Key: Name
+          Value: VsCodeVPC
+
+  # 인터넷 게이트웨이 생성
+  InternetGateway:
+    Type: 'AWS::EC2::InternetGateway'
+    Properties:
+      Tags:
+        - Key: Name
+          Value: VsCodeInternetGateway
+
+  # VPC와 인터넷 게이트웨이 연결
+  AttachGateway:
+    Type: 'AWS::EC2::VPCGatewayAttachment'
+    Properties:
+      VpcId: !Ref VsCodeVPC
+      InternetGatewayId: !Ref InternetGateway
+
+  # 퍼블릭 서브넷 생성
+  PublicSubnet:
+    Type: 'AWS::EC2::Subnet'
+    Properties:
+      VpcId: !Ref VsCodeVPC
+      CidrBlock: !Ref PublicSubnetCidrBlock
+      MapPublicIpOnLaunch: true
+      AvailabilityZone: !Select
+        - 0
+        - !GetAZs
+          Ref: 'AWS::Region'
+      Tags:
+        - Key: Name
+          Value: VsCodePublicSubnet
+
+  # 라우트 테이블 생성
+  RouteTable:
+    Type: 'AWS::EC2::RouteTable'
+    Properties:
+      VpcId: !Ref VsCodeVPC
+      Tags:
+        - Key: Name
+          Value: VsCodeRouteTable
+
+  # 퍼블릭 서브넷에 라우트 테이블 연결
+  RouteTableAssociation:
+    Type: 'AWS::EC2::SubnetRouteTableAssociation'
+    Properties:
+      SubnetId: !Ref PublicSubnet
+      RouteTableId: !Ref RouteTable
+
+  # 인터넷으로의 기본 라우트 설정
+  DefaultRoute:
+    Type: 'AWS::EC2::Route'
+    Properties:
+      RouteTableId: !Ref RouteTable
+      DestinationCidrBlock: 0.0.0.0/0
+      GatewayId: !Ref InternetGateway
+
+  # 보안 그룹 생성
+  InstanceSecurityGroup:
+    Type: 'AWS::EC2::SecurityGroup'
+    Properties:
+      GroupName: MyCustomSecurityGroup
+      GroupDescription: Enable 8080 and 8080 port
+      VpcId: !Ref VsCodeVPC
+      # SecurityGroupIngress:
+
+  # IAM Role 생성
+  VsCodeInstanceRole:
+    Type: 'AWS::IAM::Role'
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service:
+                - ec2.amazonaws.com
+            Action: "sts:AssumeRole"
+      # 주의: AdministratorAccess 정책은 전체 AWS 계정에 대한 거의 모든 작업을 허용합니다. 보안 및 비용 관리 측면에서 주의가 필요합니다.
+      ManagedPolicyArns:
+        - "arn:aws:iam::aws:policy/AmazonBedrockFullAccess"
+      Path: "/"
+
+  # IAM Profile 생성
+  VsCodeProfile:
+    Type: 'AWS::IAM::InstanceProfile'
+    Properties:
+      Path: "/"
+      Roles:
+        - Ref: VsCodeInstanceRole
+
+  # EC2 인스턴스 생성 (VSCode)
+  EC2Instance:
+    Type: 'AWS::EC2::Instance'
+    Properties:
+      IamInstanceProfile: !Ref VsCodeProfile
+      InstanceType: t3.xlarge
+      ImageId: !Ref AmazonLinux2023AmiId
+      NetworkInterfaces:
+        - AssociatePublicIpAddress: true
+          SubnetId: !Ref PublicSubnet
+          DeviceIndex: 0
+          GroupSet:
+            - !Ref InstanceSecurityGroup
+      BlockDeviceMappings:
+        - DeviceName: /dev/xvda
+          Ebs:
+            VolumeSize: 20  # 20GB
+            VolumeType: gp3
+      UserData:
+        'Fn::Base64': !Sub |
+          #!/bin/bash
+          # AWS CLI 최신 버전 설치
+          curl "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o "awscliv2.zip"
+          unzip awscliv2.zip
+          sudo ./aws/install
+          # 개발 도구 및 기타 필수 패키지 설치
+          yum update -y || dnf update -y
+          yum install -y git || dnf install -y git
+          yum groupinstall -y "Development Tools" || dnf groupinstall -y "Development Tools"
+          # python 3.9 설치
+          yum install -y python3.9 || dnf install -y python3.9
+          yum install -y python3-pip || dnf yum install -y python3-pip
+          ln -s /usr/bin/python3.9 /usr/bin/python
+          # VS Code Server 설치
+          wget https://github.com/coder/code-server/releases/download/v4.0.1/code-server-4.0.1-linux-amd64.tar.gz
+          tar -xzf code-server-4.0.1-linux-amd64.tar.gz
+          mv code-server-4.0.1-linux-amd64 /usr/local/lib/code-server
+          ln -s /usr/local/lib/code-server/bin/code-server /usr/local/bin/code-server
+          # curl workshop asset
+          curl "https://ws-assets-prod-iad-r-pdx-f3b3f9f1a7d6a3d0.s3.us-west-2.amazonaws.com/86f59566-0ae7-44be-80ab-9044b83c88f2/workshop.zip" -o "/home/ec2-user/workshop.zip"
+          unzip /home/ec2-user/workshop.zip -d /home/ec2-user/workshop
+          if [ -f /home/ec2-user/workshop/requirements.txt ]; then
+            sudo -u ec2-user pip3 install -r /home/ec2-user/workshop/requirements.txt 
+          fi
+          # AWS CLI 설정
+          mkdir -p /home/ec2-user/.aws
+          cat <<EOF > /home/ec2-user/.aws/config
+          [default]
+          region = ${Region}
+          EOF
+          # VS Code Server 설정
+          mkdir -p /home/ec2-user/.config/code-server
+          cat <<EOF > /home/ec2-user/.config/code-server/config.yaml
+          bind-addr: 0.0.0.0:8000
+          auth: none
+          cert: false
+          EOF
+          # 권한 부여
+          chown -R ec2-user:ec2-user /home/ec2-user/.config /home/ec2-user/workshop
+          # VS Code Server 서비스 구성
+          cat <<EOF > /etc/systemd/system/code-server.service
+          [Unit]
+          Description=VS Code Server
+          After=network.target
+          [Service]
+          Type=simple
+          User=ec2-user
+          ExecStart=/usr/local/bin/code-server --config /home/ec2-user/.config/code-server/config.yaml /home/ec2-user/workshop
+          Restart=always
+          [Install]
+          WantedBy=multi-user.target
+          EOF
+          systemctl daemon-reload
+          systemctl enable code-server
+          systemctl start code-server
+      Tags:
+        - Key: Name
+          Value: EC2VSCodeServer
+
+Outputs:
+  EC2InstancePublicIP:
+    Description: "Public IP address of the VS Code Server EC2 instance"
+    Value: !Sub "http://${EC2Instance.PublicIp}:8000"
