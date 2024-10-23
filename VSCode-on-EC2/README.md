@@ -109,7 +109,7 @@ Python 개발 환경 구성을 위한 Visual Studio Code (VSCode) on EC2 개발�
 
 ### VSCode 접속
 
-* 웹 브라우저에서 http://xxx.xxx.xxx.xxx:8000
+* 웹 브라우저에서 " http://xxx.xxx.xxx.xxx:8000 "
   
    ![Picture1_14](./img/14.png)
 
