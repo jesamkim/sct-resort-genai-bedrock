@@ -44,3 +44,10 @@ pip install -r requirements.txt -U
 streamlit run sct-resort-genai.py --server.port 8080
 
 ```
+
+
+---
+
+## AWS GenAI PoC Architecture
+
+![poc-architecture](./poc-architecture.png)
