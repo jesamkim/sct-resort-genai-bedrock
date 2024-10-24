@@ -51,3 +51,7 @@ streamlit run sct-resort-genai.py --server.port 8080
 ## AWS GenAI PoC Architecture
 
 ![poc-architecture](./poc-architecture.png)
+
+
+## Streamlit UI Capture (sct-resort-genai.py)
+![streamlit_capture.png](./streamlit_capture.png)
