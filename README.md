@@ -41,7 +41,7 @@ pip install -r requirements.txt -U
 다음 명령을 사용하여 Streamlit 애플리케이션을 실행합니다:
 
 ```
-streamlit run sct-resort-genai_seoul.py --server.port 8080
+streamlit run sct-resort-genai-demo.py --server.port 8080
 
 ```
 
