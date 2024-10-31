@@ -5,7 +5,7 @@ from PIL import Image
 from botocore.client import Config
 
 # Amazon Bedrock 클라이언트 설정
-bedrock_runtime = boto3.client('bedrock-runtime', region_name = "ap-northeast-2") ## Claude 3.x 리전
+bedrock_runtime = boto3.client('bedrock-runtime', region_name = "us-east-1") ## Claude 3.x 리전
 bedrock_config = Config(connect_timeout=120, read_timeout=120, retries={'max_attempts': 3})
 bedrock_agent_client = boto3.client("bedrock-agent-runtime", config=bedrock_config, region_name = "us-east-1") ## KB 리전
 
@@ -175,11 +175,11 @@ model_option = st.selectbox(
 
 # 선택된 모델에 따라 model_id 설정
 if model_option == "Claude 3 Haiku":
-    model_id = "anthropic.claude-3-haiku-20240307-v1:0"  # Claude 3 Haiku (On-Demand)
-    #model_id = "us.anthropic.claude-3-haiku-20240307-v1:0"  # Claude 3 Haiku (Cross-region)
+    #model_id = "anthropic.claude-3-haiku-20240307-v1:0"  # Claude 3 Haiku (On-Demand)
+    model_id = "us.anthropic.claude-3-haiku-20240307-v1:0"  # Claude 3 Haiku (Cross-region)
 else:
-    model_id = "anthropic.claude-3-5-sonnet-20240620-v1:0"  # Claude 3.5 Sonnet v1 (On-Demand)
-    #model_id = "us.anthropic.claude-3-5-sonnet-20240620-v1:0"  # Claude 3.5 Sonnet v1 (Cross-region)
+    #model_id = "anthropic.claude-3-5-sonnet-20240620-v1:0"  # Claude 3.5 Sonnet v1 (On-Demand)
+    model_id = "us.anthropic.claude-3-5-sonnet-20240620-v1:0"  # Claude 3.5 Sonnet v1 (Cross-region)
 
 # 메인 컨텐츠를 위한 컨테이너
 main_container = st.container()
