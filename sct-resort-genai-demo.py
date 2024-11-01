@@ -1,16 +1,22 @@
 import streamlit as st
 import boto3
 import json
+import pandas as pd 
 from PIL import Image
 from botocore.client import Config
 
 # Amazon Bedrock 클라이언트 설정
-bedrock_runtime = boto3.client('bedrock-runtime', region_name = "us-east-1") ## Claude 3.x 리전
+bedrock_runtime = boto3.client('bedrock-runtime', region_name = "us-west-2") ## Claude 3.x 리전
 bedrock_config = Config(connect_timeout=120, read_timeout=120, retries={'max_attempts': 3})
 bedrock_agent_client = boto3.client("bedrock-agent-runtime", config=bedrock_config, region_name = "us-east-1") ## KB 리전
 
 # Knowledge Base ID 설정
 kb_id = "ACSN5MRWK2"
+
+# 세션 상태에 데이터프레임 초기화
+if 'results_df' not in st.session_state:
+    st.session_state.results_df = pd.DataFrame(columns=["VOC원문", "요약", "VOC분류", "생성답변", "담당부서"])
+
 
 def call_bedrock_model(prompt, model_id):
     response = bedrock_runtime.converse(
@@ -48,7 +54,12 @@ def summarize_input(input_text, model_id):
     4. 불필요한 조사, 접속사는 생략하세요.
     5. 원문의 주요 의도나 감정을 반영하세요.
     
-    응답 형식: 50자 이내로 서술형 문장으로 요약된 내용을 표현하세요. 일부 추가 설명은 포함되어도 됩니다.
+    응답 형식은 다음 예시 <example></example>를 참조하세요.
+    <example>
+    자녀가 만원을 내고 5000원짜리 구슬 아이스크림을 사먹었는데 거스름돈을 돌려주지 않았음. 아이가 잔돈을 달라고 했으나 근무자가 대꾸도 안하고 무시했다는 이야기를 들어 활당했으니 개선 바람.
+    </example>
+    
+    응답 형식: 50자 이내로 서술형 문장 1개 또는 2개 이내로 요약된 내용을 표현하세요. 일부 추가 설명은 포함되어도 됩니다. 생성된 답변만 출력하세요.
     """
     return call_bedrock_model(prompt, model_id)
 
@@ -186,75 +197,91 @@ main_container = st.container()
 
 with main_container:
     col1, col2 = st.columns([3, 2])
-
+    
     with col1:
         # VOC 샘플 버튼
         sample1, sample2, sample3 = st.columns(3)
+        
+        # 샘플 버튼 부분 코드
         with sample1:
             if st.button("VOC 샘플 1"):
-                st.session_state.voc_input = """어제 아이 생일 기념으로 에버랜드에 방문했어요! 가는길이 멀어서 아이가 지쳐 짜증내고 있던 참에 조류관(?)에 들렸는데요.. 마침 설명해 주시는 시간이었고, 계시던 사육사님께서 재미있게 설명해주시고 퀴즈도 내면서 아이들 참여를 유도해 주시고 아이들 이야기도 잘들어 주셔서 저희 아이도 끝까지 즐겁게 참여할 수 있었습니다.막바지 클로징 인사할때쯤 참여했던 사람들이 그냥 가버리셔서 좀 섭섭(?) 하셨을것 같은데 이렇게라도 응원 해 드리고 싶어서 남겨 봅니다!사육사님 성함은 잊어버려서 아이 사진 찍으면서 찍히셨던 사진올려봅니다!저희 아이 여섯번째 생일이었는데 덕분에 즐거운 시간 보냈습니다 감사합니다:)
-                """
+                st.session_state.voc_input = """어제 아이 생일 기념으로 에버랜드에 방문했어요! 가는길이 멀어서 아이가 지쳐 짜증내고 있던 참에 조류관(?)에 들렸는데요.. 마침 설명해 주시는 시간이었고, 계시던 사육사님께서 재미있게 설명해주시고 퀴즈도 내면서 아이들 참여를 유도해 주시고 아이들 이야기도 잘들어 주셔서 저희 아이도 끝까지 즐겁게 참여할 수 있었습니다.막바지 클로징 인사할때쯤 참여했던 사람들이 그냥 가버리셔서 좀 섭섭(?) 하셨을것 같은데 이렇게라도 응원 해 드리고 싶어서 남겨 봅니다!사육사님 성함은 잊어버려서 아이 사진 찍으면서 찍히셨던 사진올려봅니다!저희 아이 여섯번째 생일이었는데 덕분에 즐거운 시간 보냈습니다 감사합니다:)"""
+
         with sample2:
             if st.button("VOC 샘플 2"):
-                st.session_state.voc_input = """장애 아이가 있어 부모님까지 모시고 같이 캐리비안 베이를 방문했어요. 들어가자마자 사람이 너무 많고 첫 방문이라 헤매고 있다가 락커룸을 이용하려고 갔더니 1층은 이미 마감이라 계단을 이용해 다른층을 이용해야했는데 아이가 계단 사용이 힘들고 많은 짐들과 어떻게할지 몰라 양해를 구하니 웨이브 락커룸 1시 20분경 '***' 분께서 락커룸 확인 후 1층으로 락커룸 한자리 배려해주셨어요. 저와 아이둘에 할머니까지 넷이라 좁긴했지만 짐과 아이를 안고 계단을 오르내리는 건 너무 위험하고 힘들었기에  그 분께 정말 감사해서 눈물이 날 지경이더라구요. 덕분에 계단 오르내리며 위험하지않게 잘 이용했습니다. 다른 공간을 못찾아 이 곳에 감사인사 전해요.그리고 건의 사항이 있다면 1층 락커룸을 장애인 등 불편한 사람을 위해 몇 칸이라도 배려해줄 수 있으실까요? 엘레베이터도 없어서 위험할 수도 있어서 얘기드려봅니다.
-                """
+                st.session_state.voc_input = """장애 아이가 있어 부모님까지 모시고 같이 캐리비안 베이를 방문했어요. 들어가자마자 사람이 너무 많고 첫 방문이라 헤매고 있다가 락커룸을 이용하려고 갔더니 1층은 이미 마감이라 계단을 이용해 다른층을 이용해야했는데 아이가 계단 사용이 힘들고 많은 짐들과 어떻게할지 몰라 양해를 구하니 웨이브 락커룸 1시 20분경 '***' 분께서 락커룸 확인 후 1층으로 락커룸 한자리 배려해주셨어요. 저와 아이둘에 할머니까지 넷이라 좁긴했지만 짐과 아이를 안고 계단을 오르내리는 건 너무 위험하고 힘들었기에 그 분께 정말 감사해서 눈물이 날 지경이더라구요. 덕분에 계단 오르내리며 위험하지않게 잘 이용했습니다. 다른 공간을 못찾아 이 곳에 감사인사 전해요.그리고 건의 사항이 있다면 1층 락커룸을 장애인 등 불편한 사람을 위해 몇 칸이라도 배려해줄 수 있으실까요? 엘레베이터도 없어서 위험할 수도 있어서 얘기드려봅니다."""
+
         with sample3:
             if st.button("VOC 샘플 3"):
-                st.session_state.voc_input = """안녕하세요 6월 22일 촬영 날짜전에 잠시 규정에 대해서 알고싶어서 연락드렸습니다 개인 미러리스로 혼자 촬영하려하구요 개인 스냅 촬영을 하는 브이로그를 촬영하려 합니다 주변인물들은 전부 모자이크를 할것이구요 확정된 인원만 나오는걸로 하여 영상 제작을 하려합니다 에버랜드에 정확한 규정이 어디있는지 몰라 연락드렸습니다 영상은 추후에 유튜브에 업로드 될 예정이오나 아직 채널도 없고 영상 시작을 에버랜드에서 하고자 연락드린겁니다 감사합니다스튜디오 " 도달 " 입니다감사합니다 좋은 하루 보내세요
-                """
-        
-        # 조건부로 초기값 설정
+                st.session_state.voc_input = """안녕하세요 6월 22일 촬영 날짜전에 잠시 규정에 대해서 알고싶어서 연락드렸습니다 개인 미러리스로 혼자 촬영하려하구요 개인 스냅 촬영을 하는 브이로그를 촬영하려 합니다 주변인물들은 전부 모자이크를 할것이구요 확정된 인원만 나오는걸로 하여 영상 제작을 하려합니다 에버랜드에 정확한 규정이 어디있는지 몰라 연락드렸습니다 영상은 추후에 유튜브에 업로드 될 예정이오나 아직 채널도 없고 영상 시작을 에버랜드에서 하고자 연락드린겁니다 감사합니다스튜디오 " 도달 " 입니다감사합니다 좋은 하루 보내세요"""
+                
         if "voc_input" not in st.session_state:
             st.session_state.voc_input = ""
-        
-        # VOC 입력 텍스트 영역
+            
         voc_input = st.text_area("여기에 VOC를 입력해주세요.", height=200, key="voc_input")
         
-        # 체크박스와 생성 버튼
         col_check, col_generate = st.columns([3, 1])
         with col_check:
             summary = st.checkbox("요약", key="summary")
             classification = st.checkbox("분류", key="classification")
             feedback = st.checkbox("답변", key="feedback")
             department = st.checkbox("담당 부서", key="department")
+        
         with col_generate:
             generate = st.button("생성형 AI 생성", type="primary")
-
+    
     with col2:
         st.subheader(f"Amazon Bedrock - {model_option} 답변 결과입니다.")
         
         if generate and voc_input and (summary or classification or feedback or department):
+            # 현재 요청에 대한 결과를 저장할 딕셔너리
+            current_result = {
+                "VOC원문": voc_input,
+                "요약": "",
+                "VOC분류": "",
+                "생성답변": "",
+                "담당부서": ""
+            }
+            
             if summary:
-                st.text_area("요약", summarize_input(voc_input, model_id), height=100)
+                summary_result = summarize_input(voc_input, model_id)
+                st.text_area("요약", summary_result, height=100)
+                current_result["요약"] = summary_result
+                
             if classification:
-                st.text_area("분류 (일반/제안/개선/칭찬/기타)", classify_input(voc_input, model_id), height=100)
+                class_result = classify_input(voc_input, model_id)
+                st.text_area("분류", class_result, height=100)
+                current_result["VOC분류"] = class_result
+                
             if feedback:
-                st.text_area("답변", gen_feedback(voc_input, model_id), height=200)
+                feedback_result = gen_feedback(voc_input, model_id)
+                st.text_area("답변", feedback_result, height=200)
+                current_result["생성답변"] = feedback_result
+                
             if department:
-                st.text_area("담당 부서", get_department(voc_input, model_id), height=100)
+                dept_result = get_department(voc_input, model_id)
+                st.text_area("담당 부서", dept_result, height=100)
+                current_result["담당부서"] = dept_result
+            
+            # 현재 결과를 세션 상태의 데이터프레임에 추가
+            st.session_state.results_df = pd.concat([
+                st.session_state.results_df,
+                pd.DataFrame([current_result])
+            ], ignore_index=True)
+            
+            
         elif generate:
             st.warning("텍스트를 입력하고 최소 하나의 옵션을 선택해주세요.")
 
+# 전체 결과 표시
+if not st.session_state.results_df.empty:
+    st.markdown("---")  # 구분선 추가
+    st.subheader("VOC 처리 결과 목록")
+    st.dataframe(st.session_state.results_df, use_container_width=True)
 
-# VOC 요약 보고서 선택 및 표시
-#st.markdown("---")  # 구분선 추가
-
-# 보고서 옵션 리스트
-#report_options = {
-#    "2024년 4월 VOC 요약 보고서": "./output/2024-04/2024-04_VOC_summary_report.md",
-#    "2024년 5월 VOC 요약 보고서": "./output/2024-05/2024-05_VOC_summary_report.md"
-#}
-
-# 드롭다운으로 보고서 선택
-#selected_report = st.selectbox("보고서 선택", list(report_options.keys()))
-
-# 보고서 열람 버튼
-#if st.button("보고서 열람"):
-#    try:
-#        with open(report_options[selected_report], "r", encoding="utf-8") as file:
-#            report_content = file.read()
-#        st.markdown(report_content)
-#    except FileNotFoundError:
-#        st.error(f"선택한 보고서 파일을 찾을 수 없습니다: {selected_report}")
-#    except Exception as e:
-#        st.error(f"파일을 읽는 중 오류가 발생했습니다: {str(e)}")
+# 결과 초기화 버튼
+col1, col2, col3 = st.columns([4, 4, 2])
+with col3:
+    if st.button("결과 초기화"):
+        st.session_state.results_df = pd.DataFrame(columns=["VOC원문", "요약", "VOC분류", "생성답변", "담당부서"])
+        st.rerun()
