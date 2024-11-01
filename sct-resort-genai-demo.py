@@ -6,7 +6,7 @@ from PIL import Image
 from botocore.client import Config
 
 # Amazon Bedrock 클라이언트 설정
-bedrock_runtime = boto3.client('bedrock-runtime', region_name = "us-west-2") ## Claude 3.x 리전
+bedrock_runtime = boto3.client('bedrock-runtime', region_name = "us-east-1") ## Claude 3.x 리전
 bedrock_config = Config(connect_timeout=120, read_timeout=120, retries={'max_attempts': 3})
 bedrock_agent_client = boto3.client("bedrock-agent-runtime", config=bedrock_config, region_name = "us-east-1") ## KB 리전
 
