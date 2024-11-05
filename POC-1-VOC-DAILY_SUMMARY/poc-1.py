@@ -62,7 +62,8 @@ def get_contexts(retrievalResults):
 
 def process_voc(df):
     results = []
-    model_id = "us.anthropic.claude-3-5-sonnet-20240620-v1:0"  ## Claude 3.5 Sonnet (CRIS)
+    #model_id = "us.anthropic.claude-3-5-sonnet-20240620-v1:0"  ## Claude 3.5 Sonnet (CRIS)
+    model_id = "anthropic.claude-3-5-haiku-20241022-v1:0"   ## Claude 3.5 Haiku
     
     # 진행 상황을 표시할 progress bar 생성
     progress_bar = st.progress(0)
@@ -77,7 +78,7 @@ def process_voc(df):
         progress = (idx + 1) / total_rows
         progress_bar.progress(progress)
         status_text.text(f"VOC 분석 중... ({idx + 1}/{total_rows} 건 처리 완료)")
-        time.sleep(5)  # Throttling 에러를 막기 위해 1건 완료 후 5초 대기
+        time.sleep(3)  # Throttling 에러를 막기 위해 1건 완료 후 3초 대기
         
         # RAG 검색 수행
         response = retrieve(voc_text, kb_id, 3)  # RAG 검색 3건만 검색
