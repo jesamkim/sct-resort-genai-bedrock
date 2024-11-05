@@ -1,0 +1,4 @@
+boto3
+pandas
+openpyxl
+streamlit
