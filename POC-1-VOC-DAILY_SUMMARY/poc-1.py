@@ -80,7 +80,7 @@ def process_voc(df):
         time.sleep(5)  # Throttling 에러를 막기 위해 1건 완료 후 5초 대기
         
         # RAG 검색 수행
-        response = retrieve(voc_text, kb_id, 10)
+        response = retrieve(voc_text, kb_id, 3)  # RAG 검색 3건만 검색
         retrievalResults = response['retrievalResults']
         contexts = get_contexts(retrievalResults)
         
