@@ -1,0 +1,7 @@
+google-api-python-client
+anthropic
+textblob
+boto3
+pandas
+streamlit
+scikit-learn
