@@ -510,6 +510,6 @@ if st.session_state.analysis_results is not None:
     st.download_button(
         label="CSV 결과 다운로드",
         data=csv,
-        file_name='youtube_analysis_result.csv',
+        file_name=f'youtube_analysis_result_{video_id}.csv',
         mime='text/csv'
     )
