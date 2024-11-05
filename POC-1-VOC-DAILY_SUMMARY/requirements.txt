@@ -2,3 +2,5 @@ boto3
 pandas
 openpyxl
 streamlit
+Pillow
+python-dotenv

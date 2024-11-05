@@ -269,7 +269,7 @@ def analyze_video_content_large(video_id, video_df, comments_df, max_chunk_lengt
     print(f"large summary prompt: {len(prompt.encode('utf-8'))}")
     
     response = client.messages.create(
-            model="anthropic.claude-3-5-sonnet-20240620-v1:0", # Claude 3.5 Sonnet
+            model="anthropic.claude-3-5-sonnet-20240620-v1:0",  ## Claude 3.5 Sonnet
             max_tokens=4000,
             temperature=0.7,
             messages=[
@@ -371,11 +371,20 @@ logo = Image.open('logo.png')
 st.image(logo, width=200)
 st.title("Samsung C&T Resort - Analyzing YouTube comments")
 
+
+if 'analysis_results' not in st.session_state:
+    st.session_state.analysis_results = None
+
+# 화면 초기화 버튼 추가
+if st.button("화면 초기화"):
+    st.session_state.analysis_results = None
+    st.rerun()
+
 # 입력 UI 구성
 col1, col2, col3 = st.columns([1, 3, 1])
 
 with col1:
-    st.write("YouTube URL")
+    st.write("YouTube URL 입력")
 with col2:
     youtube_url = st.text_input("", label_visibility="collapsed")
 with col3:
@@ -387,15 +396,14 @@ if analyze_button and youtube_url:
         # YouTube API 초기화
         api_service_name = "youtube"
         api_version = "v3"
-        youtubeAPI_key = 'XXXXXXXXXXXXXXXXXX'  ## YouTube API 키를 입력하세요
+        youtubeAPI_key = 'xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx'   ## 발급받은 YouTube Data v3 API Key로 변경
         youtube = build(api_service_name, api_version, developerKey=youtubeAPI_key)
 
         # AnthropicBedrock 클라이언트 초기화
-        client = AnthropicBedrock(aws_region="us-west-2")
+        client = AnthropicBedrock(aws_region="us-west-2")  ## Bedrock 리전
 
         # video ID 추출
         video_id = extract_video_id(youtube_url)
-        
         if video_id:
             # 결과를 담을 컨테이너 생성
             with st.container():
@@ -404,7 +412,6 @@ if analyze_button and youtube_url:
                     # 비디오 정보와 댓글 수집
                     video_details = []
                     all_comments = []
-                    
                     video_info = get_video_details(youtube, video_id)
                     if video_info:
                         video_details.append(video_info)
@@ -419,7 +426,6 @@ if analyze_button and youtube_url:
                     for _, row in video_df.iterrows():
                         vid = row['VideoID']
                         title = row['Title']
-                        
                         if len(comments_df[comments_df['VideoID'] == vid]) > 1000:
                             analysis_type = 'large'
                             analysis = analyze_video_content_large(vid, video_df, comments_df)
@@ -436,45 +442,74 @@ if analyze_button and youtube_url:
 
                     analysis_df = pd.DataFrame(analysis_results)
 
-                    # 결과 출력
-                    st.markdown("### 게시물의 분석결과는 다음과 같습니다.")
-                    
-                    # 테두리가 있는 박스 스타일 정의
-                    st.markdown("""
-                    <style>
-                    .result-box {
-                        border: 1px solid #ddd;
-                        border-radius: 5px;
-                        padding: 20px;
-                        margin: 10px 0;
-                        background-color: #f8f9fa;
+                    # 분석 결과를 session_state에 저장
+                    st.session_state.analysis_results = {
+                        'youtube_url': youtube_url,
+                        'comments_df': comments_df,
+                        'analysis_df': analysis_df
                     }
-                    </style>
-                    """, unsafe_allow_html=True)
-
-                    # 테두리가 있는 박스에 결과 표시
-                    st.markdown(f"""
-                    <div class="result-box">
-                    • 게시물 URL: {youtube_url}<br>
-                    • 총 댓글수: {len(comments_df[comments_df['ThreadComment'] == ''])}건<br>
-                    • 대댓글수: {len(comments_df[comments_df['ThreadComment'] != ''])}건
-                    </div>
-                    """, unsafe_allow_html=True)
-
-                    # 상세 분석 결과
-                    st.markdown("### 상세 분석 결과")
-                    for _, row in analysis_df.iterrows():
-                        st.markdown(f"""
-                        **Video ID:** {row['VideoID']}  
-                        **Title:** {row['Title']}  
-                        **Analysis Type:** {row['Analysis-type']}
-                        
-                        **Analysis:**  
-                        {row['Analysis']}
-                        """)
 
         else:
             st.error("올바른 YouTube URL을 입력해주세요.")
-
     except Exception as e:
         st.error(f"분석 중 오류가 발생했습니다: {str(e)}")
+
+# 저장된 결과가 있으면 표시
+if st.session_state.analysis_results is not None:
+    results = st.session_state.analysis_results
+    
+    # 결과 출력
+    st.markdown("### 게시물의 분석결과는 다음과 같습니다.")
+
+    # 테두리가 있는 박스 스타일 정의
+    st.markdown("""
+    <style>
+    .result-box {
+        border: 1px solid #ddd;
+        border-radius: 5px;
+        padding: 20px;
+        margin: 10px 0;
+        background-color: #f8f9fa;
+    }
+    </style>
+    """, unsafe_allow_html=True)
+
+    # 테두리가 있는 박스에 결과 표시
+    st.markdown(f"""
+    <div class="result-box">
+    • 게시물 URL: {results['youtube_url']}<br>
+    • 총 댓글수: {len(results['comments_df'][results['comments_df']['ThreadComment'] == ''])}건<br>
+    • 대댓글수: {len(results['comments_df'][results['comments_df']['ThreadComment'] != ''])}건
+    </div>
+    """, unsafe_allow_html=True)
+
+    # 상세 분석 결과
+    st.markdown("### 상세 분석 결과")
+    for _, row in results['analysis_df'].iterrows():
+        st.markdown("""
+        <div style='background-color: #f8f9fa; padding: 20px; border-radius: 5px; margin: 10px 0;'>
+            <p><strong>Video ID:</strong><br>{}</p>
+            <p><strong>Title:</strong><br>{}</p>
+            <p><strong>Analysis Type:</strong><br>{}</p>
+            <p><strong>Analysis:</strong><br>{}</p>
+        </div>
+        """.format(
+            row['VideoID'],
+            row['Title'],
+            row['Analysis-type'],
+            row['Analysis'].replace('\n', '<br>')
+        ), unsafe_allow_html=True)
+
+    # CSV 다운로드 버튼
+    @st.cache_data
+    def convert_df_to_csv(df):
+        return df.to_csv(index=False).encode('utf-8-sig')
+
+    st.markdown("---")
+    csv = convert_df_to_csv(results['analysis_df'])
+    st.download_button(
+        label="CSV 결과 다운로드",
+        data=csv,
+        file_name='youtube_analysis_result.csv',
+        mime='text/csv'
+    )

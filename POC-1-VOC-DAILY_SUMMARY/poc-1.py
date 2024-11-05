@@ -7,14 +7,15 @@ import datetime
 from botocore.client import Config
 
 # Amazon Bedrock 클라이언트 설정
-bedrock_runtime = boto3.client('bedrock-runtime', region_name="us-west-2")  # Claude 3.x 리전
+bedrock_runtime = boto3.client('bedrock-runtime', region_name="us-east-1")  #### Claude 3.x 리전
 bedrock_config = Config(connect_timeout=120, read_timeout=120, retries={'max_attempts': 3})
 bedrock_agent_client = boto3.client("bedrock-agent-runtime", 
                                   config=bedrock_config, 
-                                  region_name="us-east-1")  # KB 리전
+                                  region_name="us-east-1")  #### KB 리전
 
 # Knowledge Base ID 설정
 kb_id = "ACSN5MRWK2"  ## KB ID 변경 필요
+
 
 def call_bedrock_model(prompt, model_id):
     response = bedrock_runtime.converse(
@@ -185,6 +186,97 @@ def process_voc(df):
 
 
 
+# 이메일 내용 생성
+def send_email(results_df, voc_counts):
+    ses_client = boto3.client('ses', region_name='us-east-1')   ## SES 서비스 리전 지정!!!
+    
+    # 0건이 아닌 항목만 필터링하여 텍스트 생성
+    voc_types = []
+    for voc_type in ['개선요청', '칭찬격려', '일반문의', '제안사항', '기타']:
+        count = voc_counts.get(voc_type, 0)
+        if count > 0:
+            voc_types.append(f"{voc_type} {count}건")
+    
+    current_date = datetime.datetime.now().strftime("%m/%d")
+    
+    # VOC 유형별 건수 테이블 생성
+    count_data = {
+        "구분": ["개선요청", "칭찬격려", "일반문의", "제안사항", "기타"],
+        "합계": [
+            voc_counts.get("개선요청", 0),
+            voc_counts.get("칭찬격려", 0),
+            voc_counts.get("일반문의", 0),
+            voc_counts.get("제안사항", 0),
+            voc_counts.get("기타", 0)
+        ]
+    }
+    count_df = pd.DataFrame(count_data)
+    
+    # VOC 상세 내용 테이블 생성
+    summary_rows = []
+    for voc_type in voc_counts.index:
+        filtered_df = results_df[results_df['구분'] == voc_type]
+        for _, row in filtered_df.iterrows():
+            summary_rows.append({
+                'VOC 구분': voc_type,
+                'VOC 내용 요약': row['요약']
+            })
+    
+    summary_df = pd.DataFrame(summary_rows)
+    
+    # HTML 형식의 이메일 내용
+    html_content = f"""
+    <h2>리조트 일일 VOC 발생 현황 ({current_date})</h2>
+    <p>금일 접수한 손님 VOC는 {', '.join(voc_types)}입니다.</p>
+    
+    <h3>VOC 유형별 현황</h3>
+    <style>
+        table {{
+            border-collapse: collapse;
+            width: 100%;
+            margin: 20px 0;
+        }}
+        th, td {{
+            border: 1px solid #ddd;
+            padding: 8px;
+            text-align: left;
+        }}
+        th {{
+            background-color: #f2f2f2;
+        }}
+    </style>
+    
+    {count_df.to_html(index=False)}
+    
+    <h3>VOC 상세 내용</h3>
+    {summary_df.to_html(index=False)}
+    """
+
+    try:
+        response = ses_client.send_email(
+            Source='sender@example.com',  ## 검증된 발신자 이메일
+            Destination={
+                'ToAddresses': ['receive@example.com']  ## 수신자 이메일
+            },
+            Message={
+                'Subject': {
+                    'Data': f'일일 VOC 분석 결과 ({current_date})'
+                },
+                'Body': {
+                    'Html': {
+                        'Data': html_content
+                    }
+                }
+            }
+        )
+        return True
+    except Exception as e:
+        st.error(f"이메일 전송 실패: {str(e)}")
+        return False
+
+
+
+
 def main():
     st.set_page_config(layout="wide")
     logo = Image.open('logo.png')
@@ -211,7 +303,7 @@ def main():
         df = pd.read_excel(uploaded_file)
         
         # VOC 분석 버튼
-        if st.button("VOC분석"):
+        if st.button("VOC 분석", type="primary"):
             st.write(f"총 {len(df)}건의 VOC를 분석합니다.")
             st.session_state.results_df = process_voc(df)
         
@@ -228,52 +320,56 @@ def main():
             # 유형별 건수 테이블 생성
             st.markdown("### 리조트 일일 VOC 발생 현황")
             
-            # 테이블 데이터 준비
-            count_data = {
-                "구분": ["개선요청", "칭찬격려", "일반문의", "제안사항", "기타"],
-                "합계": [
-                    voc_counts.get("개선요청", 0),
-                    voc_counts.get("칭찬격려", 0),
-                    voc_counts.get("일반문의", 0),
-                    voc_counts.get("제안사항", 0),
-                    voc_counts.get("기타", 0)
-                ]
-            }
-            count_df = pd.DataFrame(count_data)
+            # 테이블 데이터 준비           
+            count_df = pd.DataFrame({
+                '개선요청': [voc_counts.get('개선요청', 0)],
+                '칭찬격려': [voc_counts.get('칭찬격려', 0)],
+                '일반문의': [voc_counts.get('일반문의', 0)],
+                '제안사항': [voc_counts.get('제안사항', 0)],
+                '기타': [voc_counts.get('기타', 0)]
+            }, index=['합계'])
             
-            # 날짜 표시
-            current_date = datetime.datetime.now().strftime("%m/%d")
-            st.write(f"금일({current_date}) 접수한 손님 VOC는 개선요청 {count_df.loc[count_df['구분']=='개선요청', '합계'].iloc[0]}건, "
-                    f"칭찬격려 {count_df.loc[count_df['구분']=='칭찬격려', '합계'].iloc[0]}건, "
-                    f"일반문의 {count_df.loc[count_df['구분']=='일반문의', '합계'].iloc[0]}건입니다.")
-            
-            # 테이블 표시
+            # 데이터프레임 표시
             st.dataframe(
                 count_df,
-                column_config={
-                    "구분": st.column_config.TextColumn("구분"),
-                    "합계": st.column_config.NumberColumn("합계")
-                },
-                hide_index=True
+                use_container_width=True
             )
             
-            # VOC 내용 상세 표시
-            st.markdown("### VOC 상세 내용")
+            # 현재 날짜
+            current_date = datetime.datetime.now().strftime("%m/%d")
             
-            # 각 VOC 유형별로 내용 표시
-            for voc_type in ["개선요청", "칭찬격려", "일반문의", "제안사항", "기타"]:
-                if voc_type in voc_counts.index:
-                    with st.expander(f"{voc_type} ({voc_counts[voc_type]}건)"):
-                        filtered_df = results_df[results_df['구분'] == voc_type]
-                        summary_table = pd.DataFrame({
-                            'VOC 구분': [voc_type] * len(filtered_df),
-                            'VOC 내용 요약': filtered_df['요약'].values
-                        })
-                        st.dataframe(
-                            summary_table,
-                            hide_index=True,
-                            use_container_width=True
-                        )
+            # 0건이 아닌 항목만 필터링하여 텍스트 생성
+            voc_types = []
+            for voc_type in ['개선요청', '칭찬격려', '일반문의', '제안사항', '기타']:
+                count = count_df[voc_type].iloc[0]
+                if count > 0:
+                    voc_types.append(f"{voc_type} {count}건")
+
+            # 필터링된 항목들을 쉼표로 연결
+            voc_text = ", ".join(voc_types)
+
+            # 최종 텍스트 출력
+            st.write(f"금일({current_date}) 접수한 손님 VOC는 {voc_text} 입니다.")
+            
+            # VOC 내용 상세 표시
+            # 0건 초과인 VOC만 포함하는 통합 데이터프레임 생성
+            summary_rows = []
+            for voc_type in voc_counts.index:
+                filtered_df = results_df[results_df['구분'] == voc_type]
+                for _, row in filtered_df.iterrows():
+                    summary_rows.append({
+                        'VOC 구분': voc_type,
+                        'VOC 내용 요약': row['요약']
+                    })
+            
+            # 통합 데이터프레임 생성 및 표시
+            if summary_rows:
+                summary_df = pd.DataFrame(summary_rows)
+                st.dataframe(
+                    summary_df,
+                    hide_index=True,
+                    use_container_width=True
+                )
             
             # CSV 다운로드 버튼
             st.markdown("---")
@@ -284,6 +380,13 @@ def main():
                 file_name=f"voc_analysis_{datetime.datetime.now().strftime('%Y%m%d_%H%M%S')}.csv",
                 mime="text/csv"
             )
+            
+            # 이메일 전송 버튼
+            if st.button("이메일로 결과 전송"):
+                if send_email(results_df, voc_counts):
+                    st.success("이메일이 성공적으로 전송되었습니다!")
+
+
 
 if __name__ == "__main__":
     main()

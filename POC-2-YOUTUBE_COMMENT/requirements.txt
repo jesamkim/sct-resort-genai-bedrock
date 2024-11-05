@@ -5,3 +5,5 @@ boto3
 pandas
 streamlit
 scikit-learn
+Pillow
+python-dotenv
