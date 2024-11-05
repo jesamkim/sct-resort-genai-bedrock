@@ -4,6 +4,7 @@ import json
 from PIL import Image
 import pandas as pd
 import datetime
+import time
 from botocore.client import Config
 
 # Amazon Bedrock 클라이언트 설정
@@ -76,6 +77,7 @@ def process_voc(df):
         progress = (idx + 1) / total_rows
         progress_bar.progress(progress)
         status_text.text(f"VOC 분석 중... ({idx + 1}/{total_rows} 건 처리 완료)")
+        time.sleep(5)  # Throttling 에러를 막기 위해 1건 완료 후 5초 대기
         
         # RAG 검색 수행
         response = retrieve(voc_text, kb_id, 10)
