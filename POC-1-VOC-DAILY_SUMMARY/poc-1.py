@@ -62,8 +62,7 @@ def get_contexts(retrievalResults):
 
 def process_voc(df):
     results = []
-    #model_id = "us.anthropic.claude-3-5-sonnet-20240620-v1:0"  ## Claude 3.5 Sonnet (CRIS)
-    model_id = "anthropic.claude-3-5-haiku-20241022-v1:0"   ## Claude 3.5 Haiku
+    model_id = "anthropic.claude-3-5-haiku-20241022-v1:0"  ## Claude 3.5 Haiku 
     
     # 진행 상황을 표시할 progress bar 생성
     progress_bar = st.progress(0)
@@ -72,16 +71,16 @@ def process_voc(df):
     
     for idx, row in enumerate(df.iterrows()):
         voc_text = row[1]['질문내용']
-        current_time = datetime.datetime.now()
+        occurrence_time = row[1]['접수일시']  # Excel 파일의 접수일시 컬럼
         
         # 현재 진행 상황 업데이트
         progress = (idx + 1) / total_rows
         progress_bar.progress(progress)
         status_text.text(f"VOC 분석 중... ({idx + 1}/{total_rows} 건 처리 완료)")
-        time.sleep(3)  # Throttling 에러를 막기 위해 1건 완료 후 3초 대기
+        time.sleep(2)  # Throttling 에러를 막기 위해 1건 완료 후 2초 대기
         
         # RAG 검색 수행
-        response = retrieve(voc_text, kb_id, 3)  # RAG 검색 3건만 검색
+        response = retrieve(voc_text, kb_id, 3)
         retrievalResults = response['retrievalResults']
         contexts = get_contexts(retrievalResults)
         
@@ -130,7 +129,7 @@ def process_voc(df):
         A:"""
         
         result = {
-            '날짜 및 시간': current_time.strftime('%Y-%m-%d %H:%M:%S'),
+            '접수일시': occurrence_time,
             '질문내용': voc_text,
             '요약': call_bedrock_model(f"""
                                      다음 텍스트의 핵심 내용을 정확하고 간결하게 요약해주세요: 
@@ -186,7 +185,6 @@ def process_voc(df):
     status_text.empty()
     
     return pd.DataFrame(results)
-
 
 
 # 이메일 내용 생성
