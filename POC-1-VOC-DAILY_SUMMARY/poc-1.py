@@ -38,7 +38,7 @@ def call_bedrock_model(prompt, model_id):
     else:
         return "응답 생성에 실패했습니다."
 
-def retrieve(query, kbId, numberOfResults=10):
+def retrieve(query, kbId, numberOfResults=3):
     return bedrock_agent_client.retrieve(
         retrievalQuery={
             'text': query
