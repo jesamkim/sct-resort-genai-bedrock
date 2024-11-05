@@ -396,7 +396,7 @@ if analyze_button and youtube_url:
         # YouTube API 초기화
         api_service_name = "youtube"
         api_version = "v3"
-        youtubeAPI_key = 'xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx'   ## 발급받은 YouTube Data v3 API Key로 변경
+        youtubeAPI_key = 'xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx'   ## 발급받은 YouTube Data v3 API Key로 변경 ###############
         youtube = build(api_service_name, api_version, developerKey=youtubeAPI_key)
 
         # AnthropicBedrock 클라이언트 초기화
@@ -507,6 +507,9 @@ if st.session_state.analysis_results is not None:
 
     st.markdown("---")
     csv = convert_df_to_csv(results['analysis_df'])
+
+    video_id = extract_video_id(results['youtube_url'])
+    
     st.download_button(
         label="CSV 결과 다운로드",
         data=csv,
