@@ -10,6 +10,7 @@ from collections import Counter
 from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.cluster import KMeans
 import re
+from io import BytesIO
 
 # URL에서 video ID를 추출하는 함수
 def extract_video_id(url):
@@ -500,19 +501,39 @@ if st.session_state.analysis_results is not None:
             row['Analysis'].replace('\n', '<br>')
         ), unsafe_allow_html=True)
 
-    # CSV 다운로드 버튼
-    @st.cache_data
-    def convert_df_to_csv(df):
-        return df.to_csv(index=False).encode('utf-8-sig')
-
+    
+    # 엑셀 파일 생성을 위한 함수
+    def to_excel_bytes(df):
+        output = BytesIO()
+        with pd.ExcelWriter(output, engine='xlsxwriter') as writer:
+            df.to_excel(writer, sheet_name='Analysis Results', index=False)
+            # 자동 열 너비 조정
+            worksheet = writer.sheets['Analysis Results']
+            for idx, col in enumerate(df.columns):
+                series = df[col]
+                max_len = max(
+                    series.astype(str).map(len).max(),  # 열의 최대 문자 길이
+                    len(str(col))  # 열 이름의 길이
+                ) + 2  # 여유 공간
+                worksheet.set_column(idx, idx, max_len)
+        
+        output.seek(0)
+        return output.getvalue()
+        
+        
+    # xlsx 다운로드 버튼
     st.markdown("---")
-    csv = convert_df_to_csv(results['analysis_df'])
-
+    
+    # 엑셀 파일 생성
+    excel_data = to_excel_bytes(results['analysis_df'])
+    
+    # video_id 추출
     video_id = extract_video_id(results['youtube_url'])
     
+    # 다운로드 버튼
     st.download_button(
-        label="CSV 결과 다운로드",
-        data=csv,
-        file_name=f'youtube_analysis_result_{video_id}.csv',
-        mime='text/csv'
+        label="Excel 결과 다운로드",
+        data=excel_data,
+        file_name=f'youtube_analysis_result_{video_id}.xlsx',
+        mime='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
     )

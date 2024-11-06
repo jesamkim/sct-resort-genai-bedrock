@@ -4,3 +4,4 @@ openpyxl
 streamlit
 Pillow
 python-dotenv
+xlsxwriter

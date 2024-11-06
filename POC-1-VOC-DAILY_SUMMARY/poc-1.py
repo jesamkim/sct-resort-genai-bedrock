@@ -5,6 +5,7 @@ from PIL import Image
 import pandas as pd
 import datetime
 import time
+import io
 from botocore.client import Config
 
 # Amazon Bedrock 클라이언트 설정
@@ -376,14 +377,18 @@ def main():
                     use_container_width=True
                 )
             
-            # CSV 다운로드 버튼
+            # Excel 다운로드
             st.markdown("---")
-            csv = results_df.to_csv(index=False).encode('utf-8-sig')
+            # Excel 파일 생성
+            buffer = io.BytesIO()
+            with pd.ExcelWriter(buffer, engine='xlsxwriter') as writer:
+                results_df.to_excel(writer, sheet_name='VOC분석결과', index=False)
+                
             st.download_button(
-                label="결과(csv) 다운로드",
-                data=csv,
-                file_name=f"voc_analysis_{datetime.datetime.now().strftime('%Y%m%d_%H%M%S')}.csv",
-                mime="text/csv"
+                label="결과(Excel) 다운로드",
+                data=buffer.getvalue(),
+                file_name=f"voc_analysis_{datetime.datetime.now().strftime('%Y%m%d_%H%M%S')}.xlsx",
+                mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
             )
             
             # 이메일 전송 버튼
