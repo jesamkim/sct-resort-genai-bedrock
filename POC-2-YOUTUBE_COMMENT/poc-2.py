@@ -371,7 +371,7 @@ st.set_page_config(layout="wide")
 logo = Image.open('logo.png')
 st.image(logo, width=200)
 st.title("Samsung C&T Resort - Analyzing YouTube comments")
-
+st.caption("powered by Amazon Bedrock") 
 
 if 'analysis_results' not in st.session_state:
     st.session_state.analysis_results = None

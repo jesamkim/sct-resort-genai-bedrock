@@ -1,11 +1,11 @@
 import streamlit as st
 import boto3
+import io
 import json
 from PIL import Image
 import pandas as pd
 import datetime
 import time
-import io
 from botocore.client import Config
 
 # Amazon Bedrock 클라이언트 설정
@@ -200,6 +200,8 @@ def send_email(results_df, voc_counts):
             voc_types.append(f"{voc_type} {count}건")
     
     current_date = datetime.datetime.now().strftime("%m/%d")
+    # VOC 발생일시에서 날짜 추출
+    voc_date = pd.to_datetime(results_df['접수일시'].iloc[0]).strftime("%m/%d")
     
     # VOC 유형별 건수 테이블 생성
     count_data = {
@@ -230,8 +232,8 @@ def send_email(results_df, voc_counts):
     
     # HTML 형식의 이메일 내용
     html_content = f"""
-    <h2>리조트 일일 VOC 발생 현황 ({current_date})</h2>
-    <p>금일 접수한 손님 VOC는 {', '.join(voc_types)}입니다.</p>
+    <h2>리조트 일일 VOC 발생 현황 ({voc_date})</h2>
+    <p>해당 일자에 접수된 손님 VOC는 {', '.join(voc_types)}입니다.</p>
     
     <h3>VOC 유형별 현황</h3>
     <style>
@@ -258,13 +260,13 @@ def send_email(results_df, voc_counts):
 
     try:
         response = ses_client.send_email(
-            Source='sender@example.com',  ## 검증된 발신자 이메일 ####################
+            Source='sender@example.com',  ## 검증된 발신자 이메일 #################
             Destination={
-                'ToAddresses': ['receive@example.com']  ## 검증된 수신자 이메일 ############
+                'ToAddresses': ['to@example.com']  ## 검증된 수신자 이메일 #################
             },
             Message={
                 'Subject': {
-                    'Data': f'일일 VOC 분석 결과 ({current_date})'
+                    'Data': f'일일 VOC 분석 결과 ({voc_date})'
                 },
                 'Body': {
                     'Html': {
@@ -286,6 +288,7 @@ def main():
     logo = Image.open('logo.png')
     st.image(logo, width=200)
     st.title("Samsung C&T Resort - Daily VOC Analysis")
+    st.caption("powered by Amazon Bedrock") 
 
     # session_state 초기화
     if 'results_df' not in st.session_state:
@@ -341,6 +344,8 @@ def main():
             
             # 현재 날짜
             current_date = datetime.datetime.now().strftime("%m/%d")
+            # VOC 발생일시에서 날짜 추출
+            voc_date = pd.to_datetime(results_df['접수일시'].iloc[0]).strftime("%m/%d")
             
             # 0건이 아닌 항목만 필터링하여 텍스트 생성
             voc_types = []
@@ -353,7 +358,7 @@ def main():
             voc_text = ", ".join(voc_types)
 
             # 최종 텍스트 출력
-            st.write(f"금일({current_date}) 접수한 손님 VOC는 {voc_text} 입니다.")
+            st.write(f"일자({voc_date})에 접수한 손님 VOC는 {voc_text} 입니다.")
             
             # VOC 내용 상세 표시
             # 0건 초과인 VOC만 포함하는 통합 데이터프레임 생성
@@ -379,6 +384,7 @@ def main():
             
             # Excel 다운로드
             st.markdown("---")
+
             # Excel 파일 생성
             buffer = io.BytesIO()
             with pd.ExcelWriter(buffer, engine='xlsxwriter') as writer:
@@ -390,6 +396,8 @@ def main():
                 file_name=f"voc_analysis_{datetime.datetime.now().strftime('%Y%m%d_%H%M%S')}.xlsx",
                 mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
             )
+            
+            
             
             # 이메일 전송 버튼
             if st.button("이메일로 결과 전송"):
