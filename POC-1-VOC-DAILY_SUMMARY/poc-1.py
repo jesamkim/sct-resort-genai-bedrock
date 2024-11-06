@@ -8,15 +8,14 @@ import time
 from botocore.client import Config
 
 # Amazon Bedrock 클라이언트 설정
-bedrock_runtime = boto3.client('bedrock-runtime', region_name="us-east-1")  #### Claude 3.x 리전
+bedrock_runtime = boto3.client('bedrock-runtime', region_name="us-east-1")  # Claude 3.x 리전
 bedrock_config = Config(connect_timeout=120, read_timeout=120, retries={'max_attempts': 3})
 bedrock_agent_client = boto3.client("bedrock-agent-runtime", 
                                   config=bedrock_config, 
-                                  region_name="us-east-1")  #### KB 리전
+                                  region_name="us-east-1")  # KB 리전
 
 # Knowledge Base ID 설정
 kb_id = "ACSN5MRWK2"  ## KB ID 변경 필요
-
 
 def call_bedrock_model(prompt, model_id):
     response = bedrock_runtime.converse(
@@ -187,9 +186,10 @@ def process_voc(df):
     return pd.DataFrame(results)
 
 
+
 # 이메일 내용 생성
 def send_email(results_df, voc_counts):
-    ses_client = boto3.client('ses', region_name='us-east-1')   ## SES 서비스 리전 지정!!!
+    ses_client = boto3.client('ses', region_name='ap-northeast-2')
     
     # 0건이 아닌 항목만 필터링하여 텍스트 생성
     voc_types = []
@@ -220,7 +220,9 @@ def send_email(results_df, voc_counts):
         for _, row in filtered_df.iterrows():
             summary_rows.append({
                 'VOC 구분': voc_type,
-                'VOC 내용 요약': row['요약']
+                '부서': row['담당 부서'],
+                'VOC 내용 요약': row['요약'],
+                '답변제안 (참고용)': row['생성 답변']
             })
     
     summary_df = pd.DataFrame(summary_rows)
@@ -255,9 +257,9 @@ def send_email(results_df, voc_counts):
 
     try:
         response = ses_client.send_email(
-            Source='sender@example.com',  ## 검증된 발신자 이메일
+            Source='sender@example.com',  ## 검증된 발신자 이메일 ####################
             Destination={
-                'ToAddresses': ['receive@example.com']  ## 수신자 이메일
+                'ToAddresses': ['receive@example.com']  ## 검증된 수신자 이메일 ############
             },
             Message={
                 'Subject': {
@@ -360,7 +362,9 @@ def main():
                 for _, row in filtered_df.iterrows():
                     summary_rows.append({
                         'VOC 구분': voc_type,
-                        'VOC 내용 요약': row['요약']
+                        '부서': row['담당 부서'],
+                        'VOC 내용 요약': row['요약'],
+                        '답변제안 (참고용)': row['생성 답변']
                     })
             
             # 통합 데이터프레임 생성 및 표시
