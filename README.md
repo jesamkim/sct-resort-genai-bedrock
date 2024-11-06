@@ -16,8 +16,7 @@ JupyterLab 노트북은 Amazon SageMaker JupyterLab 환경에서 실행됩니다
 2. `02-voc-define-department.ipynb`: 입력된 VOC에 대한 담당 부서 확인 (RAG; KB 사용)
 3. `03-voc-generate-feedback.ipynb`: 입력된 VOC에 대한 피드백 생성 (RAG; KB 사용)
 4. `04-voc-generate-summary.ipynb`: 입력된 VOC에 대한 요약 생성
-5. `05-voc-youtube-comment.ipynb`: YouTube 댓글 분석 (YouTube Data v3 API Key 발급 필요)
-
+5. `05-voc-youtube-comment.ipynb`: YouTube 댓글 분석 (YouTube Data v3 API Key 발급 필요)
    
 **주의**: 02번과 03번 노트북을 실행하기 위해서는 사전에 Amazon Bedrock KB(Knowledge Base)가 구성되어 있어야 합니다. `kb_id` 값이 필요합니다.
 
