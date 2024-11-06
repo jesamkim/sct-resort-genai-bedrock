@@ -8,15 +8,20 @@ import datetime
 import time
 from botocore.client import Config
 
+BEDROCK_REGION = "us-east-1"  ## Claude 3 모델 호출 리전
+BEDROCK_KB_REGION = "us-east-1"  ## KB 만든 리전
+kb_id = "ACSN5MRWK2"  ## Knowledge Base ID 설정
+SES_REGION = "us-east-1"  ## 이메일 전송을 위해 Amazon SES 세팅이 된 리전
+SENDER_EMAIL = "jesamkim@amazon.com" ## SES에 인증된 보내는 이메일
+RECEIVER_EMAIL = "jesamkim@amazon.com" ## SES에 인증된 수신자 이메일
+
+
 # Amazon Bedrock 클라이언트 설정
-bedrock_runtime = boto3.client('bedrock-runtime', region_name="us-east-1")  # Claude 3.x 리전
+bedrock_runtime = boto3.client('bedrock-runtime', region_name=BEDROCK_REGION)  # Claude 3.x 리전
 bedrock_config = Config(connect_timeout=120, read_timeout=120, retries={'max_attempts': 3})
 bedrock_agent_client = boto3.client("bedrock-agent-runtime", 
                                   config=bedrock_config, 
-                                  region_name="us-east-1")  # KB 리전
-
-# Knowledge Base ID 설정
-kb_id = "ACSN5MRWK2"  ## KB ID 변경 필요
+                                  region_name=BEDROCK_KB_REGION)  # KB 리전
 
 def call_bedrock_model(prompt, model_id):
     response = bedrock_runtime.converse(
@@ -190,7 +195,7 @@ def process_voc(df):
 
 # 이메일 내용 생성
 def send_email(results_df, voc_counts):
-    ses_client = boto3.client('ses', region_name='us-east-1')
+    ses_client = boto3.client('ses', region_name=SES_REGION)
     
     # 0건이 아닌 항목만 필터링하여 텍스트 생성
     voc_types = []
@@ -260,9 +265,9 @@ def send_email(results_df, voc_counts):
 
     try:
         response = ses_client.send_email(
-            Source='sender@example.com',  ## 검증된 발신자 이메일 #################
+            Source=SENDER_EMAIL,  ## 검증된 발신자 이메일
             Destination={
-                'ToAddresses': ['to@example.com']  ## 검증된 수신자 이메일 #################
+                'ToAddresses': [RECEIVER_EMAIL]  ## 검증된 수신자 이메일
             },
             Message={
                 'Subject': {
@@ -282,7 +287,7 @@ def send_email(results_df, voc_counts):
 
 
 
-
+## 메인 함수 / streamlit UI 코드 부분 시작
 def main():
     st.set_page_config(layout="wide")
     logo = Image.open('logo.png')
