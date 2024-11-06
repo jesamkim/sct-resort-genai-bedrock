@@ -12,6 +12,10 @@ from sklearn.cluster import KMeans
 import re
 from io import BytesIO
 
+BEDROCK_REGION = "us-east-1"  ## Claude 3 모델 호출 리전
+YOUTUBE_API_KEY = 'XXXXXXXXXXXXXXXXXXXXXXXX'   ## 자신의 YouTube Data v3 API Key로 변경
+
+
 # URL에서 video ID를 추출하는 함수
 def extract_video_id(url):
     patterns = [
@@ -270,8 +274,8 @@ def analyze_video_content_large(video_id, video_df, comments_df, max_chunk_lengt
     print(f"large summary prompt: {len(prompt.encode('utf-8'))}")
     
     response = client.messages.create(
-            model="anthropic.claude-3-5-sonnet-20240620-v1:0",  ## Claude 3.5 Sonnet
-            max_tokens=4000,
+            model="anthropic.claude-3-5-sonnet-20240620-v1:0",
+            max_tokens=4096,
             temperature=0.7,
             messages=[
                 {"role": "user", "content": summary}
@@ -373,6 +377,7 @@ st.image(logo, width=200)
 st.title("Samsung C&T Resort - Analyzing YouTube comments")
 st.caption("powered by Amazon Bedrock") 
 
+
 if 'analysis_results' not in st.session_state:
     st.session_state.analysis_results = None
 
@@ -397,11 +402,11 @@ if analyze_button and youtube_url:
         # YouTube API 초기화
         api_service_name = "youtube"
         api_version = "v3"
-        youtubeAPI_key = 'xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx'   ## 발급받은 YouTube Data v3 API Key로 변경 ###############
+        youtubeAPI_key = YOUTUBE_API_KEY
         youtube = build(api_service_name, api_version, developerKey=youtubeAPI_key)
 
         # AnthropicBedrock 클라이언트 초기화
-        client = AnthropicBedrock(aws_region="us-west-2")  ## Bedrock 리전
+        client = AnthropicBedrock(aws_region=BEDROCK_REGION)  ## Bedrock 리전
 
         # video ID 추출
         video_id = extract_video_id(youtube_url)
@@ -501,7 +506,6 @@ if st.session_state.analysis_results is not None:
             row['Analysis'].replace('\n', '<br>')
         ), unsafe_allow_html=True)
 
-    
     # 엑셀 파일 생성을 위한 함수
     def to_excel_bytes(df):
         output = BytesIO()
@@ -519,9 +523,7 @@ if st.session_state.analysis_results is not None:
         
         output.seek(0)
         return output.getvalue()
-        
-        
-    # xlsx 다운로드 버튼
+
     st.markdown("---")
     
     # 엑셀 파일 생성
