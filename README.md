@@ -18,9 +18,9 @@ JupyterLab 노트북은 Amazon SageMaker JupyterLab 환경에서 실행됩니다
 4. `04-voc-generate-summary.ipynb`: 입력된 VOC에 대한 요약 생성
 5. `05-voc-youtube-comment.ipynb`: YouTube 댓글 분석 (YouTube Data v3 API Key 발급 필요)
    
-**필수 #1**: 02번과 03번 노트북을 실행하기 위해서는 사전에 Amazon Bedrock KB(Knowledge Base)가 구성되어 있어야 합니다. `kb_id` 값이 필요합니다.
-**필수 #2**: 05번 노트북을 실행하기 위해서는 사전에 YouTube Data API Key (v3) 를 가지고 있어야 합니다. 
-**필수 #3**: POC-1-VOC-DAILY_SUMMARY 디렉토리의 streamlit 애플리케이션에서 메일 보내기 기능을 위해 미리 Amazon SES에 검증된 발신자/수신자 이메일을 등록해두어야 합니다.
+- **필수 #1**: 02번과 03번 노트북을 실행하기 위해서는 사전에 Amazon Bedrock KB(Knowledge Base)가 구성되어 있어야 합니다. `kb_id` 값이 필요합니다.
+- **필수 #2**: 05번 노트북을 실행하기 위해서는 사전에 YouTube Data API Key (v3) 를 가지고 있어야 합니다. 
+- **필수 #3**: POC-1-VOC-DAILY_SUMMARY 디렉토리의 streamlit 애플리케이션에서 메일 보내기 기능을 위해 미리 Amazon SES에 검증된 발신자/수신자 이메일을 등록해두어야 합니다.
 
 
 ### Streamlit 애플리케이션
