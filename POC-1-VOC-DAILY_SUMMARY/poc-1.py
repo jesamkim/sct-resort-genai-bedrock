@@ -190,7 +190,7 @@ def process_voc(df):
 
 # 이메일 내용 생성
 def send_email(results_df, voc_counts):
-    ses_client = boto3.client('ses', region_name='ap-northeast-2')
+    ses_client = boto3.client('ses', region_name='us-east-1')
     
     # 0건이 아닌 항목만 필터링하여 텍스트 생성
     voc_types = []
