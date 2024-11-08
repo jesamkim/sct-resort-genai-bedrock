@@ -292,8 +292,8 @@ def main():
     st.set_page_config(layout="wide")
     logo = Image.open('logo.png')
     st.image(logo, width=200)
-    st.title("Samsung C&T Resort - Daily VOC Analysis")
-    st.caption("powered by Amazon Bedrock") 
+    st.title(":blue[Samsung C&T Resort - Daily VOC Analysis]")
+    st.caption(":rainbow[powered by Amazon Bedrock]") 
 
     # session_state 초기화
     if 'results_df' not in st.session_state:
