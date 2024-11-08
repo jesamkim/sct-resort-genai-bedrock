@@ -10,10 +10,11 @@ from botocore.client import Config
 
 BEDROCK_REGION = "us-east-1"  ## Claude 3 모델 호출 리전
 BEDROCK_KB_REGION = "us-east-1"  ## KB 만든 리전
-kb_id = "ACSN5MRWK2"  ## Knowledge Base ID 설정
+kb_id = "XXXXXXXX"  ## Knowledge Base ID 설정
+
 SES_REGION = "us-east-1"  ## 이메일 전송을 위해 Amazon SES 세팅이 된 리전
-SENDER_EMAIL = "jesamkim@amazon.com" ## SES에 인증된 보내는 이메일
-RECEIVER_EMAIL = "jesamkim@amazon.com" ## SES에 인증된 수신자 이메일
+SENDER_EMAIL = "sender@samsung.com" ## SES에 인증된 보내는 이메일
+RECEIVER_EMAIL = "receiver@samsung.com" ## SES에 인증된 수신자 이메일
 
 
 # Amazon Bedrock 클라이언트 설정
@@ -289,10 +290,9 @@ def send_email(results_df, voc_counts):
 
 ## 메인 함수 / streamlit UI 코드 부분 시작
 def main():
-    st.set_page_config(layout="wide", page_title="SCT Resort GenAI #1")
     logo = Image.open('logo.png')
     st.image(logo, width=200)
-    st.title(":blue[Samsung C&T Resort - Daily VOC Analysis]")
+    st.title(":blue[Daily VOC Analysis]")
     st.caption(":rainbow[powered by Amazon Bedrock]") 
 
     # session_state 초기화
@@ -302,11 +302,11 @@ def main():
     # 초기화 버튼을 제목 바로 아래에 우측 정렬로 배치
     col_reset = st.container()
     with col_reset:
-        col1, col2, col3 = st.columns([6, 2, 2])
-        with col3:
+        col1, col2 = st.columns([1, 9])
+        with col1:
             if st.button("화면 초기화", use_container_width=True):
                 st.session_state.results_df = None
-                st.rerun()  # experimental_rerun() 대신 rerun() 사용
+                st.rerun()
     
     # 파일 업로드
     uploaded_file = st.file_uploader("VOC Excel 파일을 업로드하세요", type=['xlsx'])

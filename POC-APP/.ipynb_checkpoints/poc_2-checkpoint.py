@@ -10,10 +10,11 @@ from collections import Counter
 from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.cluster import KMeans
 import re
-from io import BytesIO
+import io
+import datetime
 
 BEDROCK_REGION = "us-east-1"  ## Claude 3 모델 호출 리전
-YOUTUBE_API_KEY = 'XXXXXXXXXXXXXXXXXXXXXXXX'   ## 자신의 YouTube Data v3 API Key로 변경
+YOUTUBE_API_KEY = 'xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx'   ## 자신의 YouTube Data v3 API Key로 변경
 
 
 # URL에서 video ID를 추출하는 함수
@@ -92,7 +93,7 @@ def get_video_details(youtube, video_id):
         }
     return None
 
-def analyze_video_content_small(video_id, video_df, comments_df, max_chunk_length=5000):
+def analyze_video_content_small(video_id, video_df, comments_df, client, max_chunk_length=5000):
     # 비디오 정보 가져오기
     video_info = video_df[video_df['VideoID'] == video_id].iloc[0]
     video_title = video_info['Title']
@@ -169,7 +170,7 @@ def cluster_comments(comments, n_clusters=5):
     kmeans.fit(X)
     return kmeans.labels_
 
-def analyze_video_content_large(video_id, video_df, comments_df, max_chunk_length=5000):
+def analyze_video_content_large(video_id, video_df, comments_df, client, max_chunk_length=5000):
     video_info = video_df[video_df['VideoID'] == video_id].iloc[0]
     video_comments = comments_df[comments_df['VideoID'] == video_id]
     
@@ -369,173 +370,135 @@ def get_video_details(youtube, video_id):
     return None
 
 
+## 메인 함수 / streamlit UI 코드 부분 시작
+def main():
+    logo = Image.open('logo.png')
+    st.image(logo, width=200)
+    st.title(":blue[Analyzing YouTube comments]")
+    st.caption(":rainbow[powered by Amazon Bedrock]")
 
-# Streamlit 페이지 설정
-st.set_page_config(layout="wide", page_title="SCT Resort GenAI #2")
-logo = Image.open('logo.png')
-st.image(logo, width=200)
-st.title(":blue[Samsung C&T Resort - Analyzing YouTube comments]")
-st.caption(":rainbow[powered by Amazon Bedrock]") 
+    if 'analysis_results' not in st.session_state:
+        st.session_state.analysis_results = None
 
+    # 화면 초기화 버튼 추가
+    if st.button("화면 초기화"):
+        st.session_state.analysis_results = None
+        st.rerun()
 
-if 'analysis_results' not in st.session_state:
-    st.session_state.analysis_results = None
+    # 입력 UI 구성
+    col1, col2, col3 = st.columns([1, 3, 1])
+    with col1:
+        st.write("YouTube URL 입력")
+    with col2:
+        youtube_url = st.text_input("", label_visibility="collapsed")
+    with col3:
+        analyze_button = st.button("댓글 분석", type="primary", use_container_width=True)
 
-# 화면 초기화 버튼 추가
-if st.button("화면 초기화"):
-    st.session_state.analysis_results = None
-    st.rerun()
+    # 분석 실행
+    if analyze_button and youtube_url:
+        try:
+            # YouTube API 초기화
+            api_service_name = "youtube"
+            api_version = "v3"
+            youtubeAPI_key = YOUTUBE_API_KEY
+            youtube = build(api_service_name, api_version, developerKey=youtubeAPI_key)
 
-# 입력 UI 구성
-col1, col2, col3 = st.columns([1, 3, 1])
+            # AnthropicBedrock 클라이언트 초기화 - 여기로 이동
+            client = AnthropicBedrock(aws_region=BEDROCK_REGION)
 
-with col1:
-    st.write("YouTube URL 입력")
-with col2:
-    youtube_url = st.text_input("", label_visibility="collapsed")
-with col3:
-    analyze_button = st.button("댓글 분석", type="primary", use_container_width=True)
+            # video ID 추출
+            video_id = extract_video_id(youtube_url)
+            if video_id:
+                # 결과를 담을 컨테이너 생성
+                with st.container():
+                    # 로딩 표시
+                    with st.spinner('댓글을 분석중입니다...'):
+                        # 비디오 정보와 댓글 수집
+                        video_details = []
+                        all_comments = []
+                        video_info = get_video_details(youtube, video_id)
+                        if video_info:
+                            video_details.append(video_info)
+                            video_comments = get_comments_for_video(youtube, video_id)
+                            all_comments.extend(video_comments)
+                            video_df = pd.DataFrame(video_details)
+                            comments_df = pd.DataFrame(all_comments)
 
-# 분석 실행
-if analyze_button and youtube_url:
-    try:
-        # YouTube API 초기화
-        api_service_name = "youtube"
-        api_version = "v3"
-        youtubeAPI_key = YOUTUBE_API_KEY
-        youtube = build(api_service_name, api_version, developerKey=youtubeAPI_key)
+                            # 분석 실행
+                            analysis_results = []
+                            for _, row in video_df.iterrows():
+                                vid = row['VideoID']
+                                title = row['Title']
+                                if len(comments_df[comments_df['VideoID'] == vid]) > 1000:
+                                    analysis_type = 'large'
+                                    analysis = analyze_video_content_large(vid, video_df, comments_df, client)
+                                else:
+                                    analysis_type = 'small'
+                                    analysis = analyze_video_content_small(vid, video_df, comments_df, client)
+                                analysis_results.append({
+                                    'VideoID': vid,
+                                    'Title': title,
+                                    'Analysis-type': analysis_type,
+                                    'Analysis': analysis
+                                })
+                            analysis_df = pd.DataFrame(analysis_results)
 
-        # AnthropicBedrock 클라이언트 초기화
-        client = AnthropicBedrock(aws_region=BEDROCK_REGION)  ## Bedrock 리전
+                            # 분석 결과를 session_state에 저장
+                            st.session_state.analysis_results = {
+                                'youtube_url': youtube_url,
+                                'comments_df': comments_df,
+                                'analysis_df': analysis_df
+                            }
+            else:
+                st.error("올바른 YouTube URL을 입력해주세요.")
+        except Exception as e:
+            st.error(f"분석 중 오류가 발생했습니다: {str(e)}")
 
-        # video ID 추출
-        video_id = extract_video_id(youtube_url)
-        if video_id:
-            # 결과를 담을 컨테이너 생성
-            with st.container():
-                # 로딩 표시
-                with st.spinner('댓글을 분석중입니다...'):
-                    # 비디오 정보와 댓글 수집
-                    video_details = []
-                    all_comments = []
-                    video_info = get_video_details(youtube, video_id)
-                    if video_info:
-                        video_details.append(video_info)
-                        video_comments = get_comments_for_video(youtube, video_id)
-                        all_comments.extend(video_comments)
-
-                    video_df = pd.DataFrame(video_details)
-                    comments_df = pd.DataFrame(all_comments)
-
-                    # 분석 실행
-                    analysis_results = []
-                    for _, row in video_df.iterrows():
-                        vid = row['VideoID']
-                        title = row['Title']
-                        if len(comments_df[comments_df['VideoID'] == vid]) > 1000:
-                            analysis_type = 'large'
-                            analysis = analyze_video_content_large(vid, video_df, comments_df)
-                        else:
-                            analysis_type = 'small'
-                            analysis = analyze_video_content_small(vid, video_df, comments_df)
-                        
-                        analysis_results.append({
-                            'VideoID': vid,
-                            'Title': title,
-                            'Analysis-type': analysis_type,
-                            'Analysis': analysis
-                        })
-
-                    analysis_df = pd.DataFrame(analysis_results)
-
-                    # 분석 결과를 session_state에 저장
-                    st.session_state.analysis_results = {
-                        'youtube_url': youtube_url,
-                        'comments_df': comments_df,
-                        'analysis_df': analysis_df
-                    }
-
-        else:
-            st.error("올바른 YouTube URL을 입력해주세요.")
-    except Exception as e:
-        st.error(f"분석 중 오류가 발생했습니다: {str(e)}")
-
-# 저장된 결과가 있으면 표시
-if st.session_state.analysis_results is not None:
-    results = st.session_state.analysis_results
-    
-    # 결과 출력
-    st.markdown("### 게시물의 분석결과는 다음과 같습니다.")
-
-    # 테두리가 있는 박스 스타일 정의
-    st.markdown("""
-    <style>
-    .result-box {
-        border: 1px solid #ddd;
-        border-radius: 5px;
-        padding: 20px;
-        margin: 10px 0;
-        background-color: #f8f9fa;
-    }
-    </style>
-    """, unsafe_allow_html=True)
-
-    # 테두리가 있는 박스에 결과 표시
-    st.markdown(f"""
-    <div class="result-box">
-    • 게시물 URL: {results['youtube_url']}<br>
-    • 총 댓글수: {len(results['comments_df'][results['comments_df']['ThreadComment'] == ''])}건<br>
-    • 대댓글수: {len(results['comments_df'][results['comments_df']['ThreadComment'] != ''])}건
-    </div>
-    """, unsafe_allow_html=True)
-
-    # 상세 분석 결과
-    st.markdown("### 상세 분석 결과")
-    for _, row in results['analysis_df'].iterrows():
-        st.markdown("""
-        <div style='background-color: #f8f9fa; padding: 20px; border-radius: 5px; margin: 10px 0;'>
-            <p><strong>Video ID:</strong><br>{}</p>
-            <p><strong>Title:</strong><br>{}</p>
-            <p><strong>Analysis Type:</strong><br>{}</p>
-            <p><strong>Analysis:</strong><br>{}</p>
-        </div>
-        """.format(
-            row['VideoID'],
-            row['Title'],
-            row['Analysis-type'],
-            row['Analysis'].replace('\n', '<br>')
-        ), unsafe_allow_html=True)
-
-    # 엑셀 파일 생성을 위한 함수
-    def to_excel_bytes(df):
-        output = BytesIO()
-        with pd.ExcelWriter(output, engine='xlsxwriter') as writer:
-            df.to_excel(writer, sheet_name='Analysis Results', index=False)
-            # 자동 열 너비 조정
-            worksheet = writer.sheets['Analysis Results']
-            for idx, col in enumerate(df.columns):
-                series = df[col]
-                max_len = max(
-                    series.astype(str).map(len).max(),  # 열의 최대 문자 길이
-                    len(str(col))  # 열 이름의 길이
-                ) + 2  # 여유 공간
-                worksheet.set_column(idx, idx, max_len)
+    # 저장된 결과가 있으면 표시
+    if st.session_state.analysis_results is not None:
+        results = st.session_state.analysis_results
+        # 결과 출력
+        st.markdown("### 게시물의 분석결과는 다음과 같습니다.")
+        for _, row in results['analysis_df'].iterrows():
+            st.markdown(f"""
+            **Video ID:** {row['VideoID']}
+            
+            **Title:** {row['Title']}
+            
+            **Analysis Type:** {row['Analysis-type']}
+            
+            **Analysis:**
+            {row['Analysis']}
+            """)
+            
+        # Excel 다운로드 버튼
+        st.markdown("---")
         
-        output.seek(0)
-        return output.getvalue()
+        # 분석 결과를 DataFrame으로 변환
+        export_df = pd.DataFrame({
+            'Video URL': [results['youtube_url']],
+            'Video ID': [row['VideoID'] for _, row in results['analysis_df'].iterrows()],
+            'Title': [row['Title'] for _, row in results['analysis_df'].iterrows()],
+            'Analysis Type': [row['Analysis-type'] for _, row in results['analysis_df'].iterrows()],
+            'Analysis': [row['Analysis'] for _, row in results['analysis_df'].iterrows()],
+            'Comments Count': [len(results['comments_df'])]
+        })
 
-    st.markdown("---")
-    
-    # 엑셀 파일 생성
-    excel_data = to_excel_bytes(results['analysis_df'])
-    
-    # video_id 추출
-    video_id = extract_video_id(results['youtube_url'])
-    
-    # 다운로드 버튼
-    st.download_button(
-        label="Excel 결과 다운로드",
-        data=excel_data,
-        file_name=f'youtube_analysis_result_{video_id}.xlsx',
-        mime='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
-    )
+        # Excel 파일 생성
+        buffer = io.BytesIO()
+        with pd.ExcelWriter(buffer, engine='xlsxwriter') as writer:
+            # 분석 결과 시트
+            export_df.to_excel(writer, sheet_name='분석결과', index=False)
+            # 전체 댓글 시트
+            results['comments_df'].to_excel(writer, sheet_name='전체댓글', index=False)
+        
+        # 다운로드 버튼
+        st.download_button(
+            label="분석 결과 다운로드 (Excel)",
+            data=buffer.getvalue(),
+            file_name=f"youtube_analysis_{datetime.datetime.now().strftime('%Y%m%d_%H%M%S')}.xlsx",
+            mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+        ) 
+
+if __name__ == "__main__":
+    main()
