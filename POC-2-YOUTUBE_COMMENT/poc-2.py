@@ -371,7 +371,7 @@ def get_video_details(youtube, video_id):
 
 
 # Streamlit 페이지 설정
-st.set_page_config(layout="wide")
+st.set_page_config(layout="wide", page_title="SCT Resort GenAI #2")
 logo = Image.open('logo.png')
 st.image(logo, width=200)
 st.title(":blue[Samsung C&T Resort - Analyzing YouTube comments]")
