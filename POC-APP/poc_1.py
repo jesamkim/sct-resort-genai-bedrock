@@ -105,7 +105,9 @@ def process_voc(df):
 
         다음 형식으로 응답해 주세요:
         이러한 유형의 문의나 이슈를 처리하는 답변내용을 참조하세요.
-        답변 내용 및 스타일을 참조하여 고객 질의에 대한 답변을 생성하세요. 생성된 답변만 출력하세요.
+        답변 내용 및 스타일을 참조하여 고객 질의에 대한 답변을 생성하세요.
+        답변 생성시 \n\n 와 같은 부분은 포함하지 않습니다.  
+        생성된 답변만 출력하세요.
         
         예시 응답:
         "안전환경그룹고객안전 *** 프로안녕하세요안전그룹 *** 프로 입니다사고자 모 통화병원 치료 흉터 남을 것 같다고 하며 여자아이라 걱정하심보호자 책임도 있다고 공감하시어 당사에서 도의적인 치료비 지원 예정 입니다문제 없도록 종결 하겠습니다감사 합니다"
@@ -227,11 +229,13 @@ def send_email(results_df, voc_counts):
     for voc_type in voc_counts.index:
         filtered_df = results_df[results_df['구분'] == voc_type]
         for _, row in filtered_df.iterrows():
+            # 답변제안에서 \n\n을 공백으로 대체
+            cleaned_answer = row['생성 답변'].replace('\n\n', ' ').strip()
             summary_rows.append({
                 'VOC 구분': voc_type,
                 '부서': row['담당 부서'],
                 'VOC 내용 요약': row['요약'],
-                '답변제안 (참고용)': row['생성 답변']
+                '답변제안 (참고용)': cleaned_answer
             })
     
     summary_df = pd.DataFrame(summary_rows)
