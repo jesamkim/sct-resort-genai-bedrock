@@ -289,7 +289,7 @@ def send_email(results_df, voc_counts):
 
 ## 메인 함수 / streamlit UI 코드 부분 시작
 def main():
-    st.set_page_config(layout="wide")
+    st.set_page_config(layout="wide", page_title="SCT Resort GenAI #1")
     logo = Image.open('logo.png')
     st.image(logo, width=200)
     st.title(":blue[Samsung C&T Resort - Daily VOC Analysis]")
