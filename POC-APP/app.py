@@ -19,7 +19,7 @@ def main():
     # 사이드바 설정
     with st.sidebar:
         st.title(":blue[Samsung C&T Resort]")
-        st.caption("GenAI Tools")
+        st.caption("built on AWS")
         
         # 앱 선택 라디오 버튼
         app_choice = st.radio(
