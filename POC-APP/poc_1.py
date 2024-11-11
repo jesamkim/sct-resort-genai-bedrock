@@ -255,7 +255,7 @@ def send_email(results_df, voc_counts):
     <p>해당 일자에 접수된 손님 VOC는 {', '.join(voc_types)}입니다.</p>
     
     <h3>VOC 유형별 현황</h3>
-    <style>
+     <style>
         table {{
             border-collapse: collapse;
             width: 100%;
@@ -268,6 +268,27 @@ def send_email(results_df, voc_counts):
         }}
         th {{
             background-color: #f2f2f2;
+        }}
+        /* VOC 상세 내용 테이블의 컬럼 너비 */
+        .voc-details {{
+            table-layout: fixed;
+            width: 100%;
+        }}
+        .voc-details th:nth-child(1) {{  /* VOC 구분 */
+            width: 15%;
+        }}
+        .voc-details th:nth-child(2) {{  /* 부서 */
+            width: 15%;
+        }}
+        .voc-details th:nth-child(3) {{  /* VOC 내용 요약 */
+            width: 30%;
+        }}
+        .voc-details th:nth-child(4) {{  /* 답변제안 */
+            width: 30%;
+        }}
+        .voc-details td {{
+            word-wrap: break-word;
+            vertical-align: top;
         }}
     </style>
     
