@@ -10,11 +10,11 @@ from botocore.client import Config
 
 BEDROCK_REGION = "us-east-1"  ## Claude 3 모델 호출 리전
 BEDROCK_KB_REGION = "us-east-1"  ## KB 만든 리전
-kb_id = "XXXXXXXX"  ## Knowledge Base ID 설정
+kb_id = "XXXXXXXXX"  ## Knowledge Base ID 설정
 
 SES_REGION = "us-east-1"  ## 이메일 전송을 위해 Amazon SES 세팅이 된 리전
-SENDER_EMAIL = "sender@samsung.com" ## SES에 인증된 보내는 이메일
-RECEIVER_EMAIL = "receiver@samsung.com" ## SES에 인증된 수신자 이메일
+SENDER_EMAIL = "jesamkim@amazon.com" ## SES에 인증된 보내는 이메일
+RECEIVER_EMAILS = ["jesamkim@amazon.com", "khermes.kim@samsung.com"] ## SES에 인증된 수신자 이메일
 
 
 # Amazon Bedrock 클라이언트 설정
@@ -136,6 +136,7 @@ def process_voc(df):
 
         A:"""
         
+        # 요약을 위한 프롬프트
         result = {
             '접수일시': occurrence_time,
             '질문내용': voc_text,
@@ -152,14 +153,20 @@ def process_voc(df):
                                     4. 불필요한 조사, 접속사는 생략하세요.
                                     5. 원문의 주요 의도나 감정을 반영하세요.
                                     
-                                    응답 형식은 다음 예시 <example></example>를 참조하세요.
-                                    <example>
-                                    자녀가 만원을 내고 5000원짜리 구슬 아이스크림을 사먹었는데 거스름돈을 돌려주지 않았음. 아이가 잔돈을 달라고 했으나 근무자가 대꾸도 안하고 무시했다는 이야기를 들어 활당했으니 개선 바람.
-                                    </example>
+                                    요약에 대한 응답 형식은 다음 예시를 참조하세요.
+                                    다음은 VOC 원문 <voc_sample></voc_sample> 과 요약 <summary_sample></summary_sample> 입니다.
+                                    <voc_sample>
+                                    애가 셋인 다둥이 엄마입니다. 입장권 예매를 하려하는데 패키지 예매도 어른1 아이1  하나 구매하면 못하고 다른 것들도 대부분 2장 제한 이러니 구매하고싶어도 어떻게 예매해야하나 참 난감하고 막내가 지금은 어려서 다행이지만 나중에 크면 애 셋에 어른 둘을 일반 예매 아니면 답이 없나 싶어 셋이어서 참 불편하다라는 생각이 드네요.. 이런 점에서 개선점을 찾아주시면 좋겠습니다.
+                                    </voc_sample>
+                                    <summary_sample>
+                                    * 주제: 다자녀 가정의 입장권 예매 어려움
+                                    * 주요내용: 3자녀 가정이 패키지나 2장 제한 예매 시스템으로 인해 입장권 구매에 어려움을 겪고 있어 개선이 필요함.
+                                    </summary_sample>
                                     
-                                    응답 형식: 50자 이내로 서술형 문장 1개 또는 2개 이내로 요약된 내용을 표현하세요. 일부 추가 설명은 포함되어도 됩니다. 생성된 답변만 출력하세요.
+                                    응답 형식: 주제, 주요내용을 블렛포인트로 구분합니다. 주요내용 부분은 문맥을 이해할 수 있도록 너무 축약한 정보로 표현하지 않습니다. 생성된 답변만 출력하세요.
                                      """, 
                                      model_id),
+            # 구분을 위한 프롬프트
             '구분': call_bedrock_model(f"""
                                      입력된 텍스트를 다음 VOC 유형 중 하나로 분류해주세요:
                                     - 일반문의
@@ -231,10 +238,12 @@ def send_email(results_df, voc_counts):
         for _, row in filtered_df.iterrows():
             # 답변제안에서 \n\n을 공백으로 대체
             cleaned_answer = row['생성 답변'].replace('\n\n', ' ').strip()
+            # 요약 내용의 \n을 <br>로 변환
+            formatted_summary = row['요약'].replace('\n', '<br>')
             summary_rows.append({
                 'VOC 구분': voc_type,
                 '부서': row['담당 부서'],
-                'VOC 내용 요약': row['요약'],
+                'VOC 내용 요약': formatted_summary,
                 '답변제안 (참고용)': cleaned_answer
             })
     
@@ -265,14 +274,14 @@ def send_email(results_df, voc_counts):
     {count_df.to_html(index=False)}
     
     <h3>VOC 상세 내용</h3>
-    {summary_df.to_html(index=False)}
+    {summary_df.to_html(index=False, escape=False)}
     """
 
     try:
         response = ses_client.send_email(
             Source=SENDER_EMAIL,  ## 검증된 발신자 이메일
             Destination={
-                'ToAddresses': [RECEIVER_EMAIL]  ## 검증된 수신자 이메일
+                'BccAddresses': RECEIVER_EMAILS  ## 검증된 수신자 이메일 (수신자들이 서로의 이메일 주소를 보지 못하게 BCC를 사용)
             },
             Message={
                 'Subject': {
