@@ -43,7 +43,7 @@ pip install -r requirements.txt
 
 3. 분석 실행:
 ```bash
-python sct-resort-genai-demo.py
+streamlit run sct-resort-genai-demo.py
 ```
 
 ## 출력 결과
