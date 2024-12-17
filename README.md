@@ -1,70 +1,62 @@
-# SCT Resort - GenAI POC
+# SCT Resort GenAI with Amazon Bedrock
 
-이 프로젝트는 SCT Resort의 VOC(Voice of Customer) 데이터를 분석하고 처리하기 위한 GenAI 솔루션을 제공합니다.
+리조트 VOC(Voice of Customer) 데이터를 Amazon Bedrock의 Generative AI 모델을 활용하여 분석하는 프로젝트입니다.
+
+![Architecture](poc-architecture.png)
+
+## 주요 기능
+
+1. VOC 데이터 요약 분석
+2. 부서별 VOC 분류
+3. VOC 기반 피드백 생성
+4. VOC 종합 리포트 생성
 
 ## 프로젝트 구조
 
-프로젝트는 크게 두 부분으로 나뉩니다:
-1. JupyterLab 노트북 파일 (.ipynb)
-2. Streamlit 애플리케이션 (Python 파일)
+```
+.
+├── CloudFormation/          # AWS CloudFormation 템플릿
+├── VSCode-on-EC2/          # EC2에서 VSCode 설정 가이드
+├── data/                    # 입력 데이터 디렉토리
+├── output/                  # 분석 결과 출력 디렉토리
+├── POC-1/                  # 1차 POC 구현
+├── POC-2/                  # 2차 POC 구현
+└── POC-master/             # 최종 POC 구현
+```
 
-### JupyterLab 노트북
+## Jupyter Notebooks
 
-JupyterLab 노트북은 Amazon SageMaker JupyterLab 환경에서 실행됩니다. 다음 노트북들이 포함되어 있습니다:
-
-1. `01-voc_summary.ipynb`: 월별 VOC에 대한 각 월별 일일 요약
-2. `02-voc-define-department.ipynb`: 입력된 VOC에 대한 담당 부서 확인 (RAG; KB 사용)
-3. `03-voc-generate-feedback.ipynb`: 입력된 VOC에 대한 피드백 생성 (RAG; KB 사용)
-4. `04-voc-generate-summary.ipynb`: 입력된 VOC에 대한 요약 생성
-5. `05-voc-youtube-comment.ipynb`: YouTube 댓글 분석 (YouTube Data v3 API Key 발급 필요)
-
-### 사전 작업 요소
-- **필수 #1**: 02번과 03번 노트북을 실행하기 위해서는 사전에 Amazon Bedrock KB(Knowledge Base)가 구성되어 있어야 합니다. `kb_id` 값이 필요합니다.
-- **필수 #2**: 05번 노트북을 실행하기 위해서는 사전에 YouTube Data API Key (v3) 를 가지고 있어야 합니다. 
-
-- **필수 #3**: POC-APP 디렉토리의 streamlit 통합 애플리케이션 - app.py
-
-> poc_1.py : 메일 보내기 기능을 위해 미리 `Amazon SES에 검증된 발신자/수신자 이메일을 등록`해두어야 합니다. 
-
-> poc_1.py : 또한 KB 사용을 위해 미리 구성된 `kb_id` 값이 필요합니다.
-
-> poc_2.py : `YouTube Data API Key (v3)` 를 가지고 있어야 합니다. 
-
----
-
-
-### Streamlit 애플리케이션
-
-Streamlit 애플리케이션은 EC2에서 구동되는 VSCode 환경에서 개발 및 테스트됩니다.
-
-
+- `01-voc_summary.ipynb`: VOC 데이터 요약 분석
+- `02-voc-define-department.ipynb`: 부서별 VOC 분류
+- `03-voc-generate-feedback.ipynb`: VOC 기반 피드백 생성
+- `04-voc-generate-summary.ipynb`: VOC 종합 리포트 생성
 
 ## 설치 및 실행
 
-### 필요 패키지 설치
-
-VSCode 환경의 터미널에서 다음 명령을 실행하여 필요한 패키지를 설치하거나 업데이트합니다:
-
-```
-cd POC-APP
-pip install -r requirements.txt -U
-
+1. 필요 패키지 설치:
+```bash
+pip install -r requirements.txt
 ```
 
+2. 데이터 준비:
+- `data/` 디렉토리에 분석할 VOC 데이터 파일을 위치시킵니다.
 
-### Streamlit 애플리케이션 실행
-
-다음 명령을 사용하여 Streamlit 애플리케이션을 실행합니다:
-
-```
-streamlit run app.py --server.port 8501
-
+3. 분석 실행:
+```bash
+python sct-resort-genai-demo.py
 ```
 
+## 출력 결과
 
----
+분석 결과는 `output/` 디렉토리에 저장됩니다:
+- 일별 VOC 건수 차트 (`daily_voc_count_line_chart.png`)
+- VOC 요약 리포트 (`VOC_summary_report.md`)
+- 상세 분석 결과 CSV 파일
 
-## AWS GenAI PoC Architecture
+## EC2에서 개발 환경 설정
 
-![poc-architecture](./poc-architecture.png)
+EC2 인스턴스에서 VSCode를 설정하고 개발하는 방법은 [VSCode-on-EC2/README.md](VSCode-on-EC2/README.md)를 참조하세요.
 
+## License
+
+이 프로젝트는 MIT 라이선스를 따릅니다. 자세한 내용은 [LICENSE](LICENSE) 파일을 참조하세요.
